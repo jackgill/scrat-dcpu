@@ -1,3 +1,10 @@
+* Notes
 * To Do
-** Create a disassembler
-** Add support for operations besides SET
+** DONE Assembler should output actual binary
+** DONE Create a disassembler
+** DONE emulator needs to be able read binary output from assembler
+** DONE refactor disassembler and emulator to share disassembly code
+** TODO assembler and disassembler needs to support multi-word instructions
+** TODO Add support to the emulator for operations besides SET
+* Scratch
+new goal for the assembler: be able to reproduce notch's test program
