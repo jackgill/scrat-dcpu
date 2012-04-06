@@ -52,21 +52,20 @@ if (@ARGV != 1) {
 
 my $input_file_name = $ARGV[0];
 
-open(my $in, '<', $input_file_name);
+open(my $in, '<:raw', $input_file_name);
 
 dump_registers();
 
 my $line_number = 0;
-while(<$in>) {
-	chomp;
-	my $line = $_;
+while(read($in, my $packed_word, 2)) {
+	my $word = unpack('B16', $packed_word);
 
 	# Unpack instruction
-	unless ($line =~ /^
+	unless ($word =~ /^
 	([01]{6})
 	([01]{6})
 	([01]{4})$/x) {
-		die "Invalid instruction: $line (line $line_number)\n";
+		die "Invalid instruction: $word (line $line_number)\n";
 	}
 	my $second_value = bin2dec($1);
 	my $first_value = bin2dec($2);
@@ -109,10 +108,10 @@ sub get_value {
 }
 
 sub dump_registers {
-	print "Registers:\n";
 	for my $value (sort(keys %registers)) {
-		printf("\t%s: %#04x\n", $registers{$value}->[0], ${ $registers{$value}->[1] });
+		printf("\t%s: %#04x", $registers{$value}->[0], ${ $registers{$value}->[1] });
 	}
+	print "\n";
 }
 
 sub bin2dec {
