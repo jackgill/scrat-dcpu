@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use autodie;
 
+#########################################
 my %op_codes = (
 	'SET' => 0x1, # sets a to b
 	'ADD' => 0x2, # sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
@@ -38,22 +39,8 @@ my %values = (
 	'[I]' => 0x0e, # Value of register I
 	'[J]' => 0x0f, # Value of register J
 	);
+################################################
 
-sub encode_value {
-	my ($value, $line_number) = @_;
-	if ($value =~ /0x\d{4}/) {
-		my $num = hex($value);
-		if ($num > 0x1f) {
-			die "Error: illegal literal: $value\n(on line $line_number)\n";
-		}
-		return $num + 32;
-	}
-	unless(exists($values{$value})) {
-		die "Error: unrecognized value: $value\n(on line $line_number)\n";
-	}
-	return $values{$value};
-}
-	
 if (@ARGV != 1) {
 	die "Usage: $0 file.asm";
 }
@@ -62,7 +49,7 @@ my $input_file_name = $ARGV[0];
 my $output_file_name = $input_file_name;
 $output_file_name =~ s/\.asm/\.o/; # TODO: make this less hacky
 
-open(my $out, '>', $output_file_name);
+open(my $out, '>:raw', $output_file_name); # Write output to a binary file
 open(my $in, '<', $input_file_name);
 
 my $line_number = 0;
@@ -73,10 +60,14 @@ while(<$in>) {
 	# Discard comments
 	my $line = (split /;/)[0];
 
+	# Strip leading and trailing whitespace
+	$line =~ s/^\s*//;
+	$line =~ s/\s*$//;
+
 	# Check syntax
 	# TODO: check for unbalanced brackets
 	unless ($line =~ /
-	^\s*
+	^
 	(\w{3})
 	\s+
 	(\[?[\w\d]+\]?)
@@ -84,7 +75,7 @@ while(<$in>) {
 	,
 	\s+
 	(\[?[\w\d]+\]?)
-	\s*$
+	$
 	/x) {
 		die "Syntax error on line $line_number:\n$line\n";
 	}
@@ -109,18 +100,26 @@ while(<$in>) {
 	my $first_value = encode_value($first_operand, $line_number);
 	my $second_value = encode_value($second_operand, $line_number);
 
-	print $line, "\n";
-	print "Op code: $op_code\n";
-	print "First value: $first_value\n";
-	print "Second value: $second_value\n";
+	# print "Op code: $op_code\n";
+	# print "First value: $first_value\n";
+	# print "Second value: $second_value\n\n";
 
+	my $op_code_bit_string = sprintf('%04b', $op_code);
+	my $first_value_bit_string = sprintf('%06b', $first_value);
+	my $second_value_bit_string = sprintf('%06b', $second_value);
+	
+	# print "Op code bit string: $op_code_bit_string\n";
+	# print "First value code bit string: $first_value_bit_string\n";
+	# print "Second value bit string: $second_value_bit_string\n\n";
+	
 	# Build instruction
-	my $instruction = sprintf("%06b%06b%04b", $second_value, $first_value, $op_code);
-
-	#print "Instruction: $instruction\n";
+	my $text_instruction = sprintf("%06b%06b%04b", $second_value, $first_value, $op_code);
+	my $binary_instruction = pack("B16", $text_instruction);
+	
+	printf "%-15s $text_instruction\n", $line;
 
 	# Write instruction
-	print $out $instruction, "\n";
+	print $out $binary_instruction;
 
 	# Increment line number
 	$line_number++;
@@ -129,3 +128,20 @@ while(<$in>) {
 close($in);
 close($out);
 print "Wrote $output_file_name\n";
+
+
+###############################################
+sub encode_value {
+	my ($value, $line_number) = @_;
+	if ($value =~ /0x\d{4}/) {
+		my $num = hex($value);
+		if ($num > 0x1f) {
+			die "Error: illegal literal: $value\n(on line $line_number)\n";
+		}
+		return $num + 32;
+	}
+	unless(exists($values{$value})) {
+		die "Error: unrecognized value: $value\n(on line $line_number)\n";
+	}
+	return $values{$value};
+}
