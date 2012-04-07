@@ -38,6 +38,22 @@ my %values = (
 	'[Z]' => 0x0d, # Value of register Z
 	'[I]' => 0x0e, # Value of register I
 	'[J]' => 0x0f, # Value of register J
+	'[next word + A]' => 0x10,
+	'[next word + B]' => 0x11,
+	'[next word + C]' => 0x12,
+	'[next word + X]' => 0x13,
+	'[next word + Y]' => 0x14,
+	'[next word + Z]' => 0x15,
+	'[next word + I]' => 0x16,
+	'[next word + J]' => 0x17,
+	'POP' => 0x18,
+	'PEEK' => 0x19,
+	'PUSH' => 0x1a,
+	'SP' => 0x1b,
+	'PC' => 0x1c,
+	'O' => 0x1d,
+	'[next word]' => 0x1e,
+	'next word' => 0x1f,
 	);
 ################################################
 
@@ -70,11 +86,11 @@ while(<$in>) {
 	^
 	(\w{3})
 	\s+
-	(\[?[\w\d]+\]?)
+	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?)
 	\s*
 	,
 	\s+
-	(\[?[\w\d]+\]?)
+	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?)
 	$
 	/x) {
 		die "Syntax error on line $line_number:\n$line\n";
@@ -97,26 +113,22 @@ while(<$in>) {
 	my $op_code = $op_codes{$mnemonic};
 
 	# Convert operands to values
-	my $first_value = encode_value($first_operand, $line_number);
-	my $second_value = encode_value($second_operand, $line_number);
-
-	# print "Op code: $op_code\n";
-	# print "First value: $first_value\n";
-	# print "Second value: $second_value\n\n";
-
-	my $op_code_bit_string = sprintf('%04b', $op_code);
-	my $first_value_bit_string = sprintf('%06b', $first_value);
-	my $second_value_bit_string = sprintf('%06b', $second_value);
-	
-	# print "Op code bit string: $op_code_bit_string\n";
-	# print "First value code bit string: $first_value_bit_string\n";
-	# print "Second value bit string: $second_value_bit_string\n\n";
+	my $additional_words = [];
+	my $instruction_bit_length = 16;
+	my $first_value = encode_value($first_operand, $additional_words);
+	my $second_value = encode_value($second_operand, $additional_words);
 	
 	# Build instruction
 	my $text_instruction = sprintf("%06b%06b%04b", $second_value, $first_value, $op_code);
-	my $binary_instruction = pack("B16", $text_instruction);
 	
-	printf "%-15s $text_instruction\n", $line;
+	for my $additional_word (@{ $additional_words }) {
+		$instruction_bit_length += 16;
+		$text_instruction .=  $additional_word;
+	}
+	
+	my $binary_instruction = pack("B$instruction_bit_length", $text_instruction);
+
+	printf "%-20s $text_instruction\n", $line;
 
 	# Write instruction
 	print $out $binary_instruction;
@@ -132,16 +144,44 @@ print "Wrote $output_file_name\n";
 
 ###############################################
 sub encode_value {
-	my ($value, $line_number) = @_;
-	if ($value =~ /0x\d{4}/) {
-		my $num = hex($value);
-		if ($num > 0x1f) {
-			die "Error: illegal literal: $value\n(on line $line_number)\n";
+	my ($value, $additional_words_ref) = @_;
+	#print "encode_value($value)\n";
+	
+	if ($value =~ /^0x\d{4}$/) { # Literal
+		#print "literal\n";
+		push @{ $additional_words_ref }, encode_literal($value);
+		return $values{'next word'};
+	}
+	elsif ($value =~ /\[\s*(0x\d{4})\s*\]/) { # [literal]
+		#print "[literal]\n";
+		push @{ $additional_words_ref }, encode_literal($1);
+		return $values{'[next word]'};
+	}
+	elsif ($value =~ /\[\s*(0x\d{4})\s*\+\s*(\w)\s*\]/) { # [literal + register]
+		#print "[literal + register]\n";
+		my $literal = $1;
+		my $register = $2;
+		unless ($register =~ /[ABCXYZIJ]/i) {
+			die "Unknown register: $register (line $line_number)\n";
 		}
-		return $num + 32;
+		push @{ $additional_words_ref }, encode_literal($literal);
+		return $values{"[next word + $register]"};
 	}
-	unless(exists($values{$value})) {
-		die "Error: unrecognized value: $value\n(on line $line_number)\n";
+	elsif(exists($values{$value})) {
+		#print "value\n";
+		return $values{$value};	
 	}
-	return $values{$value};
+	return undef;
+}
+
+sub encode_literal {
+	my $value = shift;
+	#print "encode_literal($value) = ";
+	if ($value =~ /0x\d{4}/) {
+		my $num = hex($value); # TODO: validate number size
+		my $bin = sprintf("%016b", $num);
+		#print "$bin\n";
+		return $bin;
+	}
+	die "Error: illegal literal: $value\n(on line $line_number)\n";
 }

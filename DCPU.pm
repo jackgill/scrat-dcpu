@@ -6,7 +6,7 @@ use warnings;
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic);
+our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic read_instruction bin2dec);
 
 # Define mnemonics
 my %value_mnemonics = (
@@ -102,6 +102,63 @@ sub disassemble_instruction {
 	return "$opcode_mnemonic $first_value_mnemonic, $second_value_mnemonic";
 }
 
+sub read_word {
+	my $file_handle = shift;
+	if(read($file_handle, my $packed_word, 2)) {
+		return unpack('B16', $packed_word);
+	}
+	return 0;
+}
+
+sub should_read_next_word {
+	my $value = shift;
+	if (($value >= 0x10 && $value <= 0x17) ||
+		$value == 0x1e ||
+		$value == 0x1f) {
+		return 1;
+	}
+	return 0;
+}
+
+sub read_instruction {
+	my $file_handle = shift;
+
+	my @words = ();
+	
+	# Read the first word
+	my $word = read_word($file_handle);
+
+	unless ($word) {
+		return (); # Reached EOF
+	}
+	
+	push @words, $word;
+	
+	unless($word =~ /([01]{6})([01]{6})([01]{4})/) {
+		die "Illegal bitstring: $word\n";
+	}
+
+	my $first_value = bin2dec($2);
+	my $second_value = bin2dec($1);
+
+	if (should_read_next_word($first_value)) {
+		my $next_word = read_word($file_handle);
+		unless ($next_word) {
+			die "Error: expecting next word, but reached EOF.\n";
+		}
+		push @words, $next_word;
+	}
+
+	if (should_read_next_word($second_value)) {
+		my $next_word = read_word($file_handle);
+		unless ($next_word) {
+			die "Error: expecting next word, but reached EOF.\n";
+		}
+		push @words, $next_word;
+	}
+
+	return @words;
+}
 1;
 
 

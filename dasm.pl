@@ -12,14 +12,21 @@ my $input_file_name = $ARGV[0];
 
 my $line_number = 0;
 open(my $in, '<:raw', $input_file_name);
-while(read($in, my $packed_word, 2)) {
-	my $word = unpack('B16', $packed_word);
+while(my @words = read_instruction($in)) {
 	eval {
-		my $assembly = disassemble_instruction($word);
-		print "$word $assembly\n";
+		my $binary = shift @words;
+		my $text = disassemble_instruction($binary);
+		for my $word (@words) {
+			$binary .= ' ' . $word;
+			$text .= ' ' . sprintf("0x%04x", bin2dec($word));
+		}
+		printf "%-50s %s\n", $binary, $text;
+
 	};
 	if ($@) {
 		die "$@(on line $line_number)\n";
 	}
 }
 close $in;
+
+

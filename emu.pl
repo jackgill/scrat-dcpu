@@ -59,10 +59,16 @@ open(my $in, '<:raw', $input_file_name);
 dump_registers();
 
 my $line_number = 0;
-while(read($in, my $packed_word, 2)) {
-	my $word = unpack('B16', $packed_word);
+while(my @words = read_instruction($in)) {
+	my $word = shift @words;
+
+	# Print instruction
 	my $assembly = disassemble_instruction($word);
-	print "$assembly\n";
+	print "$assembly";
+	for my $word (@words) {
+		printf(" 0x%04x", bin2dec($word));
+	}
+	print "\n";
 	
 	# Unpack instruction
 	unless ($word =~ /^
@@ -78,11 +84,28 @@ while(read($in, my $packed_word, 2)) {
 	# Decode operator
 	my $operator_ref = get_operator($op_code);
 
+	# Resolve operands
+	my $words_ref = \@words;
+	my $first_operand = resolve_operand($first_value, $words_ref);
+	my $second_operand = resolve_operand($second_value, $words_ref);
+	
 	# Invoke operator
-	&$operator_ref($first_value, $second_value);
+	&$operator_ref($first_operand, $second_operand);
 
 	# Dump registers
 	dump_registers();
+}
+
+sub resolve_operand {
+	my ($value, $words_ref) = @_;
+	if ($value >= 0x00 && $value <= 0x07) { # Register
+		return get_register($value);
+	}
+	elsif ($value = 0x1f) { # next word
+		my $next_word = pop @{ $words_ref };
+		return bin2dec($next_word);
+	}
+	die "Unable to resolve operand $value (line $line_number)\n";
 }
 
 sub get_operator {
@@ -113,10 +136,6 @@ sub dump_registers {
 	print "\n";
 }
 
-sub bin2dec {
-    return unpack("N", pack("B32", substr("0" x 32 . shift, -32)));
-}
-
 sub not_implemented {
 	my ($mnemonic) = @_;
 	die "$mnemonic is not implemented.\n";
@@ -126,11 +145,8 @@ sub not_implemented {
 
 sub SET {
 	my ($first_operand, $second_operand) = @_;
-	my $register_ref = get_register($first_operand);
-	unless ($register_ref) {
-		die "First argument of SET must be a register. Invalid register: $first_operand (line $line_number)\n";
+	unless (ref $first_operand) {
+		die "First argument of SET must be a reference. Invalid reference: $first_operand (line $line_number)\n";
 	}
-	my $literal = get_value($second_operand);
-
-	$$register_ref = $literal
+	$$first_operand = $second_operand
 }
