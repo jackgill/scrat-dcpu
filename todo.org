@@ -4,7 +4,17 @@
 ** DONE Create a disassembler
 ** DONE emulator needs to be able read binary output from assembler
 ** DONE refactor disassembler and emulator to share disassembly code
-** TODO assembler and disassembler needs to support multi-word instructions
+** DONE assembler and disassembler needs to support multi-word instructions
+First word always has the op code and two operands, but either of those operand might reference the "next word".
+For each reference to "next word", an additional word is appended to the instruction. Since there are two operands, each of which may reference "next word" once, this means that the maximum length of an instruction is three words.
+
+When assembling an instruction, the current idea is to replace literals (which may themselves be up to a full word) with "next word" regardless. A future optimization would be to "inline" them if they are less than six bits, the size of an operand (this would be known as a "short form" value).
+
+The correct way to implement this in the assembler seems to be to check if an operand is a value, in which case just encode the value, or if it is a literal, in which case encode "next word" and append the literal as an additional word.
+
+For the disassembler, it seems that every time "next word" is encountered, read the next word and use it in place of "next word".
+** TODO emulator needs to support memory
 ** TODO Add support to the emulator for operations besides SET
 * Scratch
 new goal for the assembler: be able to reproduce notch's test program
+
