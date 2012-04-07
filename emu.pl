@@ -101,7 +101,7 @@ sub resolve_operand {
 	if ($value >= 0x00 && $value <= 0x07) { # Register
 		return get_register($value);
 	}
-	elsif ($value = 0x1f) { # next word
+	elsif ($value == 0x1f) { # next word
 		my $next_word = pop @{ $words_ref };
 		return bin2dec($next_word);
 	}
