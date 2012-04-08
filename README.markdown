@@ -4,5 +4,5 @@ This is my learning project for DCPU programming, which currently includes a (ve
 
 Limitations:
 
-* Emulator only supports SET opcode
+* Emulator only supports SET, ADD, and SUB opcodes
 * Emulator only includes registers and memory (no stack, no program counter)
