@@ -16,5 +16,7 @@ There's also a disassembler:
 	
 Limitations:
 
-* Emulator only supports SET, ADD, and SUB opcodes
-* Emulator only includes registers and memory (no stack, no program counter)
+* Assembler does not support labels
+* Assembler does not support short-form values
+* Emulator only supports SET, ADD, SUB, MUL, and DIV opcodes
+* Emulator only includes registers, overflow and memory (no stack, no program counter)

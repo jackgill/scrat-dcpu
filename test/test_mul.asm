@@ -1,0 +1,3 @@
+SET A, 0x0002
+SET B, 0x0003
+MUL A, B

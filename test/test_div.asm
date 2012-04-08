@@ -1,0 +1,3 @@
+SET A, 0x0006
+SET B, 0x0005
+DIV A, B

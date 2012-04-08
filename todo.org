@@ -33,7 +33,9 @@ read_memory
 write_memory
 ** DONE need write_value
 ** TODO Add support to the emulator for operations besides SET
+** TODO test overflow behavior for operators that set overflow
 ** TODO disassembler should pretty-print expressions
+** TODO assembler should accept -v flag
 * Scratch
 new goal for the assembler: be able to reproduce notch's test program
 an architecture is emerging for the emulator: it reads object code and (dis)assembles it to a set of expressions. the expressions are then evaluated (interpreted?).
