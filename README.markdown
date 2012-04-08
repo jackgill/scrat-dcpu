@@ -18,5 +18,5 @@ Limitations:
 
 * Assembler does not support labels
 * Assembler does not support short-form values
-* Emulator only supports SET, ADD, SUB, MUL, and DIV opcodes
-* Emulator only includes registers, overflow and memory (no stack, no program counter)
+* Emulator does not support stack
+* Emulator does not support program counter or flow control instructions (IFE, IFN, IFG, IFB)
