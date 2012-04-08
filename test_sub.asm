@@ -1,0 +1,3 @@
+SET A, 0x0003
+SET B, 0x0001
+SUB A, [B]

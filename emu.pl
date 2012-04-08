@@ -7,9 +7,9 @@ use VM;
 
 # Define operators
 my %operators = (
-	0x1 => \&SET, # a, b - sets a to b
-	0x2 => \&ADD, # a, b - sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
-	0x3 => \&notimplemented, # a, b - sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
+	0x1 => \&SET,
+	0x2 => \&ADD,
+	0x3 => \&SUB,
 	0x4 => \&notimplemented, # a, b - sets a to a*b, sets O to ((a*b)>>16)&0xffff
 	0x5 => \&notimplemented, # a, b - sets a to a/b, sets O to ((a<<16)/b)&0xffff. if b==0, sets a and O to 0 instead.
 	0x6 => \&notimplemented, # a, b - sets a to a%b. if b==0, sets a to 0 instead.
@@ -195,6 +195,25 @@ sub ADD {
 	
 	if ($result > $VM::word_size) {
 		write_overflow(0x0001);
+	}
+	else {
+		write_overflow(0x0000);
+	}
+	
+	write_value($first_operand, $result);
+}
+
+# a, b - sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
+sub SUB {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value - $second_value;
+	
+	if ($result < 0) {
+		write_overflow(0xffff);
 	}
 	else {
 		write_overflow(0x0000);
