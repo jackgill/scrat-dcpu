@@ -1,0 +1,3 @@
+SET A, 0x0002
+SET B, 0x0001
+SHL A, B

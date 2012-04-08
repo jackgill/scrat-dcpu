@@ -1,0 +1,3 @@
+SET A, 0x0004
+SET B, 0x0001
+SHR A, B

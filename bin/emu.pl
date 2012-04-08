@@ -14,8 +14,8 @@ my %operators = (
 	0x4 => \&MUL,
 	0x5 => \&DIV,
 	0x6 => \&MOD,
-	0x7 => \&notimplemented, # a, b - sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
-	0x8 => \&notimplemented, # a, b - sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
+	0x7 => \&SHL,
+	0x8 => \&SHR,
 	0x9 => \&notimplemented, # a, b - sets a to a&b
 	0xa => \&notimplemented, # a, b - sets a to a|b
 	0xb => \&notimplemented, # a, b - sets a to a^b
@@ -265,6 +265,34 @@ sub MOD {
 		my $result = $first_value % $second_value;
 		write_value($first_operand, $result);
 	}
+}
+
+# SHL a, b - sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
+sub SHL {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value << $second_value;
+
+	write_overflow( (($first_value << $second_value) >> 16) & 0xffff);
+	
+	write_value($first_operand, $result);
+}
+
+# SHR a, b - sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
+sub SHR {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value >> $second_value;
+
+	write_overflow( (($first_value << 16) >> $second_value) & 0xffff);
+	
+	write_value($first_operand, $result);
 }
 	
 sub notimplemented {
