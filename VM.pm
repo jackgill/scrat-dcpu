@@ -6,7 +6,7 @@ use warnings;
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT =qw(read_register write_register read_memory write_memory dump_registers dump_memory dump_machine_state);
+our @EXPORT =qw(read_register write_register read_memory write_memory read_overflow write_overflow dump_registers dump_memory dump_machine_state);
 
 # Define programming environment
 my $J = 0; # Register J
@@ -27,6 +27,7 @@ my %registers = (
 	);
 
 # Memory
+our $word_size = 0x10000; # 16 bit word
 my $n_memory_words = 0x10000;
 my $memory = [];
 
@@ -50,7 +51,7 @@ sub write_register {
 	unless (exists($registers{$mnemonic})) {
 		die "Error: unknown register: $mnemonic\n";		
 	}
-	unless ($value >= 0 && $value < 65536) {
+	unless ($value >= 0 && $value < $word_size) {
 		die "Illegal register value: $value\n";
 	}
 	$registers{$mnemonic} = $value;
@@ -69,12 +70,25 @@ sub write_memory {
 	unless ($address >= 0 && $address < $n_memory_words) {
 		die "Illegal memory address: $address\n";
 	}
-	unless ($value >= 0 && $value < 65536) {
+	unless ($value >= 0 && $value < $word_size) {
 		die "Illegal memory value: $value\n";
 	}
 	$memory->[$address] = $value;
 }
 
+sub read_overflow {
+	return $O;
+}
+
+sub write_overflow {
+	my $value = shift;
+	
+	unless ($value >= 0 && $value < $word_size) {
+		die "Illegal overflow value: $value\n";
+	}
+
+	$O = $value;
+}
 
 # VM diagnostics
 sub dump_machine_state {
@@ -82,9 +96,11 @@ sub dump_machine_state {
 	dump_memory();
 }
 sub dump_registers {
+	my $format = "\t%s: %04x";
 	for my $mnemonic (('A', 'B', 'C', 'X', 'Y', 'Z', 'I', 'J')) {
-		printf("\t%s: %04x", $mnemonic, read_register($mnemonic) );
+		printf($format, $mnemonic, read_register($mnemonic) );
 	}
+	printf $format, 'O', read_overflow();
 	print "\n";
 }
 

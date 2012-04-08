@@ -8,7 +8,7 @@ use VM;
 # Define operators
 my %operators = (
 	0x1 => \&SET, # a, b - sets a to b
-	0x2 => \&notimplemented, # a, b - sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
+	0x2 => \&ADD, # a, b - sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
 	0x3 => \&notimplemented, # a, b - sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
 	0x4 => \&notimplemented, # a, b - sets a to a*b, sets O to ((a*b)>>16)&0xffff
 	0x5 => \&notimplemented, # a, b - sets a to a/b, sets O to ((a<<16)/b)&0xffff. if b==0, sets a and O to 0 instead.
@@ -72,14 +72,22 @@ while(my @words = read_instruction($in)) {
 
 	# Dump machine state
 	dump_machine_state();
+
+	$line_number++;
 }
 
+# build an expression for an operand
 sub resolve_operand {
 	my ($value, $words_ref) = @_;
 	#print "Resolve $value...";
 	if ($value >= 0x00 && $value <= 0x07) { # Register
 		my $mnemonic = get_value_mnemonic($value);
 		#print "resolved to register $mnemonic\n";
+		return $mnemonic;
+	}
+	elsif ($value >= 0x08 && $value <= 0x0f) { # [Register]
+		my $mnemonic = get_value_mnemonic($value);
+		#print "resolved to $mnemonic\n";
 		return $mnemonic;
 	}
 	elsif ($value == 0x1f) { # next word (literal)
@@ -113,6 +121,7 @@ sub resolve_operand {
 	die "Unable to resolve operand $value (line $line_number)\n";
 }
 
+# get the subroutine that implements an opcode
 sub get_operator {
 	my ($op_code) = @_;
 	if (exists($operators{$op_code})) {
@@ -121,24 +130,7 @@ sub get_operator {
 	die "Unrecognized op_code: $op_code (line $line_number)\n";
 }
 
-sub get_value {
-	my ($value) = @_;
-	return $value - 32;
-}
-
-# Operators
-
-sub SET {
-	my ($first_operand, $second_operand) = @_;
-	print "SET($first_operand, $second_operand)\n";
-	write_value($first_operand, $second_operand);
-}
-
-sub not_implemented {
-	my ($mnemonic) = @_;
-	die "$mnemonic is not implemented.\n";
-}
-
+# read the value represented by an arbitrary expression
 sub read_value {
 	my $expression = shift;
 	if ($expression =~ /^\d+$/) { # literal
@@ -147,7 +139,11 @@ sub read_value {
 	elsif ($expression =~ /\[(\d+)\]/) { # Memory
 		return read_memory($1);
 	}
-	elsif ($expression =~ /\[(\w)\]/) { # Register
+	# TODO: need to sort out difference between A and [A] as lvalues and rvalues
+	elsif ($expression =~ /^(\w)$/) { # Register
+		return read_register($1);
+	}
+	elsif ($expression =~ /\[(\w)\]/) { # [Register]
 		return read_register($1);
 	}
 	elsif ($expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
@@ -156,6 +152,7 @@ sub read_value {
 	die "Error: read_value unrecognized expression: $expression\n";
 }
 
+# write the value represented by an arbitrary expression to the location represented by another arbitrary expression
 sub write_value {
 	my ($left_expression, $right_expression) = @_;
 	my $right_value = read_value($right_expression);
@@ -176,4 +173,36 @@ sub write_value {
 	else {
 		die "Error: write_value unrecognized expression: $left_expression\n";
 	}
+}
+
+# Operators
+
+# sets a to b
+sub SET {
+	my ($first_operand, $second_operand) = @_;
+	#print "SET($first_operand, $second_operand)\n";
+	write_value($first_operand, $second_operand);
+}
+
+# sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
+sub ADD {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value + $second_value;
+	
+	if ($result > $VM::word_size) {
+		write_overflow(0x0001);
+	}
+	else {
+		write_overflow(0x0000);
+	}
+	
+	write_value($first_operand, $result);
+}
+
+sub not_implemented {
+	die "Not implemented.\n";
 }
