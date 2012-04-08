@@ -16,9 +16,9 @@ my %operators = (
 	0x6 => \&MOD,
 	0x7 => \&SHL,
 	0x8 => \&SHR,
-	0x9 => \&notimplemented, # a, b - sets a to a&b
-	0xa => \&notimplemented, # a, b - sets a to a|b
-	0xb => \&notimplemented, # a, b - sets a to a^b
+	0x9 => \&AND,
+	0xa => \&BOR,
+	0xb => \&XOR,
 	0xc => \&notimplemented, # a, b - performs next instruction only if a==b
 	0xd => \&notimplemented, # a, b - performs next instruction only if a!=b
 	0xe => \&notimplemented, # a, b - performs next instruction only if a>b
@@ -294,7 +294,42 @@ sub SHR {
 	
 	write_value($first_operand, $result);
 }
+
+# AND a, b - sets a to a&b
+sub AND {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
 	
+	my $result = $first_value & $second_value;
+	
+	write_value($first_operand, $result);
+}
+
+# BOR a, b - sets a to a|b
+sub BOR {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value | $second_value;
+	
+	write_value($first_operand, $result);
+}
+
+# XOR a, b - sets a to a^b
+sub XOR {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value ^ $second_value;
+	
+	write_value($first_operand, $result);
+}
 sub notimplemented {
 	die "Not implemented.\n";
 }
