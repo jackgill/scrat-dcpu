@@ -13,8 +13,27 @@ When assembling an instruction, the current idea is to replace literals (which m
 The correct way to implement this in the assembler seems to be to check if an operand is a value, in which case just encode the value, or if it is a literal, in which case encode "next word" and append the literal as an additional word.
 
 For the disassembler, it seems that every time "next word" is encountered, read the next word and use it in place of "next word".
-** TODO emulator needs to support memory
+** DONE emulator needs to support memory
+do most chips have dedicated storage for the stack? or is it usually just in RAM?
+
+am I jumping up too high a level here? resolve-operand is basically disassembling values, which get pass to read_value...seems like read_value should be able to act on the values directly?
+
+although resolve_operand does play the important part of inlining "next word"
+
+need read_value and write value, which accept resolved operands
+
+basically what is happening here is that I am disassembling the object code and then writing an interpreter for assembly language
+
+I feel like this is not what I'm supposed to be doing...but I also feel like this will work
+** TODO create VM.pm
+need strong abstraction around the machine? A VM module that exposes these methods:
+read_register
+write_register
+read_memory
+write_memory
 ** TODO Add support to the emulator for operations besides SET
 * Scratch
 new goal for the assembler: be able to reproduce notch's test program
+
+
 
