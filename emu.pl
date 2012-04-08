@@ -131,15 +131,7 @@ sub get_value {
 sub SET {
 	my ($first_operand, $second_operand) = @_;
 	print "SET($first_operand, $second_operand)\n";
-	if ($first_operand =~ /^\w$/) { # Register
-		write_register($first_operand, read_value($second_operand));
-	}
-	elsif ($first_operand =~ /\[(\d+)\]/) { # Memory
-		write_memory($1, read_value($second_operand));
-	}
-	else {
-		die "Error: SET unrecognized first operand: $first_operand\n";
-	}
+	write_value($first_operand, $second_operand);
 }
 
 sub not_implemented {
@@ -148,18 +140,40 @@ sub not_implemented {
 }
 
 sub read_value {
-	my $value = shift;
-	if ($value =~ /^\d+$/) { # literal
-		return $value;
+	my $expression = shift;
+	if ($expression =~ /^\d+$/) { # literal
+		return $expression;
 	}
-	elsif ($value =~ /\[(\d+)\]/) { # Memory
+	elsif ($expression =~ /\[(\d+)\]/) { # Memory
 		return read_memory($1);
 	}
-	elsif ($value =~ /\[(\w)\]/) { # Register
+	elsif ($expression =~ /\[(\w)\]/) { # Register
 		return read_register($1);
 	}
-	elsif ($value =~ /\[(\d+) \+ (\w)\]/) {# [literal + register]
+	elsif ($expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
 		return read_memory($1 + read_register($2));
 	}
-	die "Error: unrecognized value: $value\n";
+	die "Error: read_value unrecognized expression: $expression\n";
+}
+
+sub write_value {
+	my ($left_expression, $right_expression) = @_;
+	my $right_value = read_value($right_expression);
+
+	if ($left_expression =~ /^\d+$/) { # literal
+		# Spec says to silently ignore this but I'm a rebel
+		die "Error: write_value attempt to assign to a literal\n";
+	}
+	elsif ($left_expression =~ /^\w$/) { # Register
+		write_register($left_expression, $right_value);
+	}
+	elsif ($left_expression =~ /\[(\d+)\]/) { # Memory
+		write_memory($1, $right_value);
+	}
+	elsif ($left_expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
+		return write_memory($1 + read_register($2), $right_value);
+	}
+	else {
+		die "Error: write_value unrecognized expression: $left_expression\n";
+	}
 }
