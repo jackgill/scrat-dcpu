@@ -1,0 +1,7 @@
+SET A, 0x000a
+SET B, 0x0002
+MOD A, B
+		
+SET X, 0x000b
+SET Y, 0x0000
+MOD X, Y

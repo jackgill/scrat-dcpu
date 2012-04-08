@@ -13,7 +13,7 @@ my %operators = (
 	0x3 => \&SUB,
 	0x4 => \&MUL,
 	0x5 => \&DIV,
-	0x6 => \&notimplemented, # a, b - sets a to a%b. if b==0, sets a to 0 instead.
+	0x6 => \&MOD,
 	0x7 => \&notimplemented, # a, b - sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
 	0x8 => \&notimplemented, # a, b - sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
 	0x9 => \&notimplemented, # a, b - sets a to a&b
@@ -251,6 +251,22 @@ sub DIV {
 	write_value($first_operand, $result);
 }
 
+# MOD a, b - sets a to a%b. if b==0, sets a to 0 instead.
+sub MOD {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	if ($second_value == 0) {
+		write_value($first_operand, 0);
+	}
+	else {
+		my $result = $first_value % $second_value;
+		write_value($first_operand, $result);
+	}
+}
+	
 sub notimplemented {
 	die "Not implemented.\n";
 }

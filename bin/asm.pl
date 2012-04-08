@@ -2,6 +2,8 @@ use strict;
 use warnings;
 use autodie;
 
+my $debug = 0;
+
 #########################################
 my %op_codes = (
 	'SET' => 0x1, # sets a to b
@@ -80,6 +82,9 @@ while(<$in>) {
 	$line =~ s/^\s*//;
 	$line =~ s/\s*$//;
 
+	# Skip empty lines
+	next unless $line;
+	
 	# Check syntax
 	# TODO: check for unbalanced brackets
 	unless ($line =~ /
@@ -100,12 +105,14 @@ while(<$in>) {
 	my $mnemonic = $1;
 	my $first_operand = $2;
 	my $second_operand = $3;
-	
-	#print $line, "\n";
-	#print "Mnemonic: $mnemonic\n";
-	#print "First operand: $first_operand\n";
-	#print "Second operand: $second_operand\n";
 
+	if ($debug) {
+		print $line, "\n";
+		print "Mnemonic: $mnemonic\n";
+		print "First operand: $first_operand\n";
+		print "Second operand: $second_operand\n";
+	}
+	
 	# Convert mnemonic to op code
 	unless (exists($op_codes{$mnemonic})) {
 		die "Error: unrecognized mnemonic: $mnemonic\n(on line $line_number)\n";
@@ -145,14 +152,14 @@ print "Wrote $output_file_name\n";
 ###############################################
 sub encode_value {
 	my ($value, $additional_words_ref) = @_;
-	#print "encode_value($value)\n";
+	print "encode_value($value)\n" if $debug;
 	
-	if ($value =~ /^0x\d{4}$/) { # Literal
+	if ($value =~ /^0x[\da-fA-F]{4}$/) { # Literal
 		#print "literal\n";
 		push @{ $additional_words_ref }, encode_literal($value);
 		return $values{'next word'};
 	}
-	elsif ($value =~ /\[\s*(0x\d{4})\s*\]/) { # [literal]
+	elsif ($value =~ /\[\s*(0x[\da-fA-F]{4})\s*\]/) { # [literal]
 		#print "[literal]\n";
 		push @{ $additional_words_ref }, encode_literal($1);
 		return $values{'[next word]'};
@@ -171,13 +178,15 @@ sub encode_value {
 		#print "value\n";
 		return $values{$value};	
 	}
-	return undef;
+	else {
+		die "Error: unrecognized value: $value\n";
+	}
 }
 
 sub encode_literal {
 	my $value = shift;
 	#print "encode_literal($value) = ";
-	if ($value =~ /0x\d{4}/) {
+	if ($value =~ /0x[\da-fA-F]{4}/) {
 		my $num = hex($value); # TODO: validate number size
 		my $bin = sprintf("%016b", $num);
 		#print "$bin\n";
