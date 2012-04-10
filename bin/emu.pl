@@ -35,7 +35,7 @@ if (@ARGV != 1) {
 my $input_file_name = $ARGV[0];
 
 open(my $in, '<:raw', $input_file_name);
-
+load_program($in);
 dump_machine_state();
 
 my $line_number = 0;

@@ -6,7 +6,7 @@ use warnings;
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic read_instruction bin2dec);
+our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic read_word read_instruction bin2dec);
 
 # Define mnemonics
 my %value_mnemonics = (

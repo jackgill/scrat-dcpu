@@ -4,9 +4,10 @@ use strict;
 use warnings;
 
 use Exporter;
+use DCPU;
 
 our @ISA = qw(Exporter);
-our @EXPORT =qw(read_register write_register read_memory write_memory read_overflow write_overflow read_stack_pointer write_stack_pointer dump_registers dump_memory dump_machine_state);
+our @EXPORT =qw(read_register write_register read_memory write_memory read_overflow write_overflow read_stack_pointer write_stack_pointer load_program dump_registers dump_memory dump_machine_state);
 
 # Define programming environment
 my $J = 0; # Register J
@@ -102,6 +103,15 @@ sub write_stack_pointer {
 	}
 
 	$SP = $value;
+}
+
+sub load_program {
+	my $fh = shift;
+	my $memory_address = 0;
+	while(my $word = read_word($fh)) {
+		write_memory($memory_address, bin2dec($word));
+		$memory_address++;
+	}
 }
 
 # VM diagnostics

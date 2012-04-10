@@ -34,7 +34,7 @@ write_memory
 ** DONE need write_value
 ** DONE Add support to the emulator for operations besides SET
 ** DONE implement stack
-** TODO need to actually load program into memory (VM::load_program ?)
+** DONE need to actually load program into memory (VM::load_program ?)
 ** TODO implement program counter
 ** TODO implement flow control instructions (IFE, IFN, IFG, IFB)
 ** TODO test overflow behavior for operators that set overflow
@@ -42,6 +42,7 @@ write_memory
 ** TODO disassembler should pretty-print expressions
 ** TODO assembler should accept -v flag
 ** TODO emulator needs to validate that the input is an object code file
+** TODO add support decimal and short form hex literals to assembler
 * Scratch
 new goal for the assembler: be able to reproduce notch's test program
 an architecture is emerging for the emulator: it reads object code and (dis)assembles it to a set of expressions. the expressions are then evaluated (interpreted?).
