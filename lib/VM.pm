@@ -6,7 +6,7 @@ use warnings;
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT =qw(read_register write_register read_memory write_memory read_overflow write_overflow dump_registers dump_memory dump_machine_state);
+our @EXPORT =qw(read_register write_register read_memory write_memory read_overflow write_overflow read_stack_pointer write_stack_pointer dump_registers dump_memory dump_machine_state);
 
 # Define programming environment
 my $J = 0; # Register J
@@ -90,6 +90,20 @@ sub write_overflow {
 	$O = $value;
 }
 
+sub read_stack_pointer {
+	return $SP;
+}
+
+sub write_stack_pointer {
+	my $value = shift;
+
+	unless ($value >= 0 && $value < $word_size) {
+		die "Illegal stack pointer value: $value\n";
+	}
+
+	$SP = $value;
+}
+
 # VM diagnostics
 sub dump_machine_state {
 	dump_registers();
@@ -106,14 +120,22 @@ sub dump_registers {
 
 sub dump_memory {
 	for (my $memory_address = 0; $memory_address < 16; $memory_address++) {
-		if ($memory_address % 8 == 0) {
-			printf "\t0x%04x:", $memory_address
-		}
-		printf " %04x", read_memory($memory_address);
-		if ((($memory_address + 1) % 8) == 0) {
-			print "\n";
-		}
+		print_memory_location($memory_address);
 	}
+	for (my $memory_address = (0x10000 - 8); $memory_address < 0x10000; $memory_address++) {
+		print_memory_location($memory_address);
+	}	
 }
 
+sub print_memory_location {
+	my $memory_address = shift;
+	
+	if ($memory_address % 8 == 0) {
+		printf "\t0x%04x:", $memory_address
+	}
+	printf " %04x", read_memory($memory_address);
+	if ((($memory_address + 1) % 8) == 0) {
+		print "\n";
+	}
+}
 1;

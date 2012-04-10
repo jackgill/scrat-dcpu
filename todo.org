@@ -32,11 +32,30 @@ write_register
 read_memory
 write_memory
 ** DONE need write_value
-** TODO Add support to the emulator for operations besides SET
+** DONE Add support to the emulator for operations besides SET
+** DONE implement stack
+** TODO need to actually load program into memory (VM::load_program ?)
+** TODO implement program counter
+** TODO implement flow control instructions (IFE, IFN, IFG, IFB)
 ** TODO test overflow behavior for operators that set overflow
+** TODO test that overflow register can read by instructions
 ** TODO disassembler should pretty-print expressions
 ** TODO assembler should accept -v flag
 ** TODO emulator needs to validate that the input is an object code file
 * Scratch
 new goal for the assembler: be able to reproduce notch's test program
 an architecture is emerging for the emulator: it reads object code and (dis)assembles it to a set of expressions. the expressions are then evaluated (interpreted?).
+
+do the special purpose registers really need their own VM methods? or would be fine to lump them in with the other registers?
+
+resolve_operand should bump PC
+
+should probably get the stack working and then focus on the program counter stuff
+
+well, we've got values with side effects. this is going to complicate things. should the side effect happen in resolve_operand or read_value? or write value? fuck.
+
+probably resolve operand, since it's already going to have side-effects (incrementing program counter)
+
+seems like it might be a cleaner design to have the same API for the general- and special-purpose registers. will need a standard way to have increment and decrement operations on them, though.
+
+I really do have an interpreter for assembly language here, which is why the flow control stuff isn't making sense. For that to work, I really will need to load the program into memory and use the program counter.

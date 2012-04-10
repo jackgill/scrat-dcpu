@@ -18,5 +18,4 @@ Limitations:
 
 * Assembler does not support labels
 * Assembler does not support short-form values
-* Emulator does not support stack
 * Emulator does not support program counter or flow control instructions (IFE, IFN, IFG, IFB)

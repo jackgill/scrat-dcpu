@@ -81,27 +81,46 @@ while(my @words = read_instruction($in)) {
 sub resolve_operand {
 	my ($value, $words_ref) = @_;
 	#print "Resolve $value...";
-	if ($value >= 0x00 && $value <= 0x07) { # Register
+	if (($value >= 0x00 && $value <= 0x0f) ||
+		($value >= 0x1b && $value <= 0x1d)) { # register, [register], and special-purpose registers (SP, PC, O)
 		my $mnemonic = get_value_mnemonic($value);
 		#print "resolved to register $mnemonic\n";
 		return $mnemonic;
 	}
-	elsif ($value >= 0x08 && $value <= 0x0f) { # [Register]
-		my $mnemonic = get_value_mnemonic($value);
-		#print "resolved to $mnemonic\n";
-		return $mnemonic;
+	elsif($value == 0x18) { # POP
+		my $stack_pointer = read_stack_pointer();
+
+		# increment stack pointer
+		my $new_value = $stack_pointer + 1;
+		
+		# Apparently wrapping is called for by the spec
+		# Putting in a warning until I feel comfortable with this
+		if ($new_value >= 0x10000 ) {
+			my $wrapped_value = $new_value - 0x10000;
+			print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
+			$new_value = $wrapped_value;
+		}
+
+		write_stack_pointer($new_value);
+		return "[$stack_pointer]";
 	}
-	elsif ($value == 0x1f) { # next word (literal)
-		my $next_word = shift @{ $words_ref };
-		my $literal = bin2dec($next_word);
-		#print "resolved to literal $literal\n";
-		return $literal;
+	elsif($value == 0x19) { # PEEK
+		my $stack_pointer = read_stack_pointer();
+		return "[$stack_pointer]";
 	}
-	elsif ($value == 0x1e) { # [next word] (memory location)
-		my $next_word = shift @{ $words_ref };
-		my $address = '[' . bin2dec($next_word) . ']';
-		#print "resolved to memory address $address\n";
-		return $address;
+	elsif($value == 0x1a) { # PUSH
+		my $stack_pointer = read_stack_pointer();
+		my $new_value = $stack_pointer - 1;
+		
+		# Apparently wrapping is called for by the spec
+		# Putting in a warning until I feel comfortable with this
+		if ($new_value < 0) {
+			my $wrapped_value = $new_value + 0x10000;
+			print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
+			$new_value = $wrapped_value;
+		}
+		write_stack_pointer($new_value);
+		return "[$new_value]";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
 		my $next_word = shift @{ $words_ref };
@@ -119,6 +138,19 @@ sub resolve_operand {
 		}
 		return "[$address + $register]";
 	}
+	elsif ($value == 0x1f) { # next word (literal)
+		my $next_word = shift @{ $words_ref };
+		my $literal = bin2dec($next_word);
+		#print "resolved to literal $literal\n";
+		return $literal;
+	}
+	elsif ($value == 0x1e) { # [next word] (memory location)
+		my $next_word = shift @{ $words_ref };
+		my $address = '[' . bin2dec($next_word) . ']';
+		#print "resolved to memory address $address\n";
+		return $address;
+	}
+	
 	die "Unable to resolve operand $value (line $line_number)\n";
 }
 
