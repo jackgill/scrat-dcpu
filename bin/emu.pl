@@ -34,29 +34,22 @@ if (@ARGV != 1) {
 
 my $input_file_name = $ARGV[0];
 
-open(my $in, '<:raw', $input_file_name);
-load_program($in);
+load_program($input_file_name);
+
 dump_machine_state();
 
-my $line_number = 0;
-while(my @words = read_instruction($in)) {
-	my $word = shift @words;
+my $word_number = 0;
+while(my $word = read_memory(read_program_counter())) {
+	# Increment program counter
+	write_program_counter(read_program_counter() + 1);
 
-	# Print instruction
-	my $assembly = disassemble_instruction($word);
-	print "$assembly";
-	for my $word (@words) {
-		printf(" 0x%04x", bin2dec($word));
-	}
-	print "\n";
-	
-	# Unpack instruction
-	unless ($word =~ /^
+	# Convert instruction to binary
+	my $instruction = sprintf("%016b", $word);
+	$instruction =~ /^
 	([01]{6})
 	([01]{6})
-	([01]{4})$/x) {
-		die "Invalid instruction: $word (line $line_number)\n";
-	}
+	([01]{4})$/x;
+
 	my $second_value = bin2dec($1);
 	my $first_value = bin2dec($2);
 	my $op_code = bin2dec($3);
@@ -65,9 +58,13 @@ while(my @words = read_instruction($in)) {
 	my $operator_ref = get_operator($op_code);
 
 	# Resolve operands
-	my $words_ref = \@words;
-	my $first_operand = resolve_operand($first_value, $words_ref);
-	my $second_operand = resolve_operand($second_value, $words_ref);
+	my $first_operand = resolve_operand($first_value);
+	my $second_operand = resolve_operand($second_value);
+
+	# Print instruction
+	my $operator_mnemonic = get_opcode_mnemonic($op_code);
+
+	print "$operator_mnemonic $first_operand, $second_operand\n";
 	
 	# Invoke operator
 	&$operator_ref($first_operand, $second_operand);
@@ -75,12 +72,17 @@ while(my @words = read_instruction($in)) {
 	# Dump machine state
 	dump_machine_state();
 
-	$line_number++;
+	$word_number++;
+
+	if ($word_number > 5) {
+		die "\n";
+		# until I get halt working
+	}
 }
 
 # build an expression for an operand
 sub resolve_operand {
-	my ($value, $words_ref) = @_;
+	my ($value) = @_;
 	#print "Resolve $value...";
 	if (($value >= 0x00 && $value <= 0x0f) ||
 		($value >= 0x1b && $value <= 0x1d)) { # register, [register], and special-purpose registers (SP, PC, O)
@@ -95,10 +97,9 @@ sub resolve_operand {
 		my $new_value = $stack_pointer + 1;
 		
 		# Apparently wrapping is called for by the spec
-		# Putting in a warning until I feel comfortable with this
 		if ($new_value >= 0x10000 ) {
 			my $wrapped_value = $new_value - 0x10000;
-			print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
+			#print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
 			$new_value = $wrapped_value;
 		}
 
@@ -114,18 +115,19 @@ sub resolve_operand {
 		my $new_value = $stack_pointer - 1;
 		
 		# Apparently wrapping is called for by the spec
-		# Putting in a warning until I feel comfortable with this
 		if ($new_value < 0) {
 			my $wrapped_value = $new_value + 0x10000;
-			print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
+			#print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
 			$new_value = $wrapped_value;
 		}
 		write_stack_pointer($new_value);
 		return "[$new_value]";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
-		my $next_word = shift @{ $words_ref };
-		my $address = bin2dec($next_word);
+		my $next_word = read_memory(read_program_counter());
+		write_program_counter(read_program_counter() + 1);
+		my $address = $next_word;
+		
 		my $register = '';
 		given ($value) {
 			when(0x10) { $register = 'A' }
@@ -140,19 +142,23 @@ sub resolve_operand {
 		return "[$address + $register]";
 	}
 	elsif ($value == 0x1f) { # next word (literal)
-		my $next_word = shift @{ $words_ref };
-		my $literal = bin2dec($next_word);
+		my $next_word = read_memory(read_program_counter());
+		write_program_counter(read_program_counter() + 1);
+
+		my $literal = $next_word;
 		#print "resolved to literal $literal\n";
 		return $literal;
 	}
 	elsif ($value == 0x1e) { # [next word] (memory location)
-		my $next_word = shift @{ $words_ref };
-		my $address = '[' . bin2dec($next_word) . ']';
+		my $next_word = read_memory(read_program_counter());
+		write_program_counter(read_program_counter() + 1);
+
+		my $address = "[$next_word]";
 		#print "resolved to memory address $address\n";
 		return $address;
 	}
 	
-	die "Unable to resolve operand $value (line $line_number)\n";
+	die "Unable to resolve operand $value\n";
 }
 
 # get the subroutine that implements an opcode
@@ -161,7 +167,7 @@ sub get_operator {
 	if (exists($operators{$op_code})) {
 		return $operators{$op_code};
 	}
-	die "Unrecognized op_code: $op_code (line $line_number)\n";
+	die "Unrecognized op_code: $op_code\n";
 }
 
 # read the value represented by an arbitrary expression
