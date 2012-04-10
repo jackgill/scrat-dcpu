@@ -1,5 +1,6 @@
 use strict;
 use warnings;
+use autodie;
 use lib 'lib';
 
 use DCPU;
