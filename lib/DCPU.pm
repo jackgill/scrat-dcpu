@@ -6,7 +6,7 @@ use warnings;
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic read_word read_instruction bin2dec);
+our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic read_word read_instruction bin2dec should_read_next_word);
 
 # Define mnemonics
 my %value_mnemonics = (
@@ -112,9 +112,9 @@ sub read_word {
 
 sub should_read_next_word {
 	my $value = shift;
-	if (($value >= 0x10 && $value <= 0x17) ||
-		$value == 0x1e ||
-		$value == 0x1f) {
+	if (($value >= 0x10 && $value <= 0x17) || # [next word + register]
+		$value == 0x1e || # [next word]
+		$value == 0x1f) { # next word
 		return 1;
 	}
 	return 0;

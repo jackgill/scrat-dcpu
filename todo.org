@@ -36,7 +36,8 @@ write_memory
 ** DONE implement stack
 ** DONE need to actually load program into memory (VM::load_program ?)
 ** DONE implement program counter
-** TODO implement flow control instructions (IFE, IFN, IFG, IFB)
+** DONE implement flow control instructions (IFE, IFN, IFG, IFB)
+need to skip next instruction, not just next word
 ** TODO test overflow behavior for operators that set overflow
 ** TODO test that overflow register can read by instructions
 ** TODO disassembler should pretty-print expressions

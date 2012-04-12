@@ -20,10 +20,10 @@ my %operators = (
 	0x9 => \&AND,
 	0xa => \&BOR,
 	0xb => \&XOR,
-	0xc => \&notimplemented, # a, b - performs next instruction only if a==b
-	0xd => \&notimplemented, # a, b - performs next instruction only if a!=b
-	0xe => \&notimplemented, # a, b - performs next instruction only if a>b
-	0xf => \&notimplemented, # a, b - performs next instruction only if (a&b)!=0
+	0xc => \&IFE,
+	0xd => \&IFN,
+	0xe => \&IFG,
+	0xf => \&IFB,
 	);
 
 
@@ -40,8 +40,6 @@ dump_machine_state();
 
 my $word_number = 0;
 while(my $word = read_memory(read_program_counter())) {
-	# Increment program counter
-	write_program_counter(read_program_counter() + 1);
 
 	# Convert instruction to binary
 	my $instruction = sprintf("%016b", $word);
@@ -78,6 +76,9 @@ while(my $word = read_memory(read_program_counter())) {
 		die "\n";
 		# until I get halt working
 	}
+	
+	# Increment program counter
+	write_program_counter(read_program_counter() + 1);
 }
 
 # build an expression for an operand
@@ -124,7 +125,7 @@ sub resolve_operand {
 		return "[$new_value]";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
-		my $next_word = read_memory(read_program_counter());
+		my $next_word = read_memory(read_program_counter() + 1);
 		write_program_counter(read_program_counter() + 1);
 		my $address = $next_word;
 		
@@ -142,7 +143,7 @@ sub resolve_operand {
 		return "[$address + $register]";
 	}
 	elsif ($value == 0x1f) { # next word (literal)
-		my $next_word = read_memory(read_program_counter());
+		my $next_word = read_memory(read_program_counter() + 1);
 		write_program_counter(read_program_counter() + 1);
 
 		my $literal = $next_word;
@@ -150,7 +151,7 @@ sub resolve_operand {
 		return $literal;
 	}
 	elsif ($value == 0x1e) { # [next word] (memory location)
-		my $next_word = read_memory(read_program_counter());
+		my $next_word = read_memory(read_program_counter() + 1);
 		write_program_counter(read_program_counter() + 1);
 
 		my $address = "[$next_word]";
@@ -215,6 +216,23 @@ sub write_value {
 	}
 }
 
+sub skip_next_instruction {
+	my $next_word = read_memory(read_program_counter() + 1);
+	my $next_bitstring = sprintf("%016b", $next_word);
+	$next_bitstring =~ /([01]{6})([01]{6})([01]{4})/;
+
+	write_program_counter(read_program_counter() + 1);
+
+	my $first_value = bin2dec($1);
+	my $second_value = bin2dec($2);
+
+	if (should_read_next_word($first_value)) {
+		write_program_counter(read_program_counter() + 1);
+	}
+	if (should_read_next_word($second_value)) {
+		write_program_counter(read_program_counter() + 1);
+	}
+}
 # Operators
 
 # SET a, b - sets a to b
@@ -369,7 +387,53 @@ sub XOR {
 	
 	write_value($first_operand, $result);
 }
-sub notimplemented {
-	die "Not implemented.\n";
+
+# IFE a, b - performs next instruction only if a==b
+sub IFE {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	unless ($first_value == $second_value) {
+		skip_next_instruction();
+	}
 }
+
+# IFN a, b - performs next instruction only if a!=b
+sub IFN {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	unless ($first_value != $second_value) {
+		skip_next_instruction();
+	}
+}
+
+# IFG a, b - performs next instruction only if a>b
+sub IFG {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	unless ($first_value > $second_value) {
+		skip_next_instruction();
+	}
+}
+
+# IFB a, b - performs next instruction only if (a&b)!=0
+sub IFB {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	unless (($first_value & $second_value) != 0) {
+		skip_next_instruction();
+	}
+}
+
 
