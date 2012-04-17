@@ -16,7 +16,5 @@ There's also a disassembler:
 	
 Limitations:
 
-* Assembler does not support labels
 * Assembler does not support short-form values
-* Emulator does not support JSR instruction
 * Emulator does not simulate clock

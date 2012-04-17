@@ -6,7 +6,7 @@ use warnings;
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic read_word read_instruction bin2dec should_read_next_word);
+our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic get_nonbasic_opcode_mnemonic read_word read_instruction bin2dec should_read_next_word);
 
 # Define mnemonics
 my %value_mnemonics = (
@@ -62,10 +62,22 @@ my %opcode_mnemonics = (
 	0xf => 'IFB',
 	);
 
+my %nonbasic_opcode_mnemonics = (
+	0x1 => 'JSR',
+	);
+
 sub get_opcode_mnemonic {
 	my $opcode = shift;
 	if (exists($opcode_mnemonics{$opcode})) {
 		return $opcode_mnemonics{$opcode};
+	}
+	die "Error: Unrecognized opcode: $opcode\n";
+}
+
+sub get_nonbasic_opcode_mnemonic {
+	my $opcode = shift;
+	if (exists($nonbasic_opcode_mnemonics{$opcode})) {
+		return $nonbasic_opcode_mnemonics{$opcode};
 	}
 	die "Error: Unrecognized opcode: $opcode\n";
 }

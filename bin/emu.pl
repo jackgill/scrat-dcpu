@@ -9,6 +9,7 @@ use VM;
 
 # Define operators
 my %operators = (
+	0x0 => \&dispatch_nonbasic_operator,
 	0x1 => \&SET,
 	0x2 => \&ADD,
 	0x3 => \&SUB,
@@ -26,6 +27,9 @@ my %operators = (
 	0xf => \&IFB,
 	);
 
+my %nonbasic_operators = (
+	0x01 => \&JSR,
+	);
 
 # Parse command line arguments
 if (@ARGV != 1) {
@@ -52,21 +56,38 @@ while(my $word = read_memory(read_program_counter())) {
 	my $first_value = bin2dec($2);
 	my $op_code = bin2dec($3);
 
-	# Decode operator
-	my $operator_ref = get_operator($op_code);
+	if ($op_code == 0) {
+		# Decode operator
+		my $operator_ref = get_nonbasic_operator($first_value);
 
-	# Resolve operands
-	my $first_operand = resolve_operand($first_value);
-	my $second_operand = resolve_operand($second_value);
+		# Resolve operand
+		my $operand = resolve_operand($second_value);
 
-	# Print instruction
-	my $operator_mnemonic = get_opcode_mnemonic($op_code);
+		# Print instruction
+		my $operator_mnemonic = get_nonbasic_opcode_mnemonic($first_value);
 
-	print "$operator_mnemonic $first_operand, $second_operand\n";
+		print "$operator_mnemonic $operand\n";
 	
-	# Invoke operator
-	&$operator_ref($first_operand, $second_operand);
+		# Invoke operator
+		&$operator_ref($operand);
+	}
+	else {
+		# Decode operator
+		my $operator_ref = get_operator($op_code);
 
+		# Resolve operands
+		my $first_operand = resolve_operand($first_value);
+		my $second_operand = resolve_operand($second_value);
+
+		# Print instruction
+		my $operator_mnemonic = get_opcode_mnemonic($op_code);
+
+		print "$operator_mnemonic $first_operand, $second_operand\n";
+	
+		# Invoke operator
+		&$operator_ref($first_operand, $second_operand);
+	}
+	
 	# Dump machine state
 	dump_machine_state();
 
@@ -171,6 +192,16 @@ sub get_operator {
 	die "Unrecognized op_code: $op_code\n";
 }
 
+sub get_nonbasic_operator {
+	my ($op_code) = @_;
+	if (exists($nonbasic_operators{$op_code})) {
+		return $nonbasic_operators{$op_code};
+	}
+	else {
+		die "Error: unrecognized non-basic opcode: $op_code\n";
+	}
+}
+
 # read the value represented by an arbitrary expression
 sub read_value {
 	my $expression = shift;
@@ -233,6 +264,7 @@ sub skip_next_instruction {
 		write_program_counter(read_program_counter() + 1);
 	}
 }
+
 # Operators
 
 # SET a, b - sets a to b
@@ -436,4 +468,14 @@ sub IFB {
 	}
 }
 
+# JSR a - pushes the address of the next instruction to the stack, then sets PC to a
+sub JSR {
+	my $value = shift;
 
+	my $sp = read_stack_pointer();
+	my $new_sp = $sp - 1;
+	$new_sp += 0x10000 if ($new_sp < 0); # wrap stack pointer
+	write_stack_pointer($new_sp);
+	write_memory($new_sp, read_program_counter());
+	write_program_counter($value - 1); # program counter will get incremented at the end of the loop
+}

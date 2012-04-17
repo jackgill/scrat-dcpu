@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use autodie;
 
-my $debug = 0;
+my $debug = 1;
 
 #########################################
 my %op_codes = (
@@ -21,6 +21,10 @@ my %op_codes = (
 	'IFN' => 0xd, # performs next instruction only if a!=b
 	'IFG' => 0xe, # performs next instruction only if a>b
 	'IFB' => 0xf, # performs next instruction only if (a&b)!=0
+	);
+
+my %nonbasic_op_codes = (
+	'JSR' => 0x01,
 	);
 
 my %values = (
@@ -71,6 +75,8 @@ open(my $out, '>:raw', $output_file_name); # Write output to a binary file
 open(my $in, '<', $input_file_name);
 
 my $line_number = 0;
+my $word_count = 0;
+my %labels = ();
 while(<$in>) {
 	# Strip newline
 	chomp;
@@ -87,50 +93,72 @@ while(<$in>) {
 	
 	# Check syntax
 	# TODO: check for unbalanced brackets
+	# note that second operand is optional
 	unless ($line =~ /
 	^
+	(?::(\w+)\s+)?	
 	(\w{3})
 	\s+
 	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?)
 	\s*
-	,
+	(?:,
 	\s+
 	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?)
+	)?
 	$
 	/x) {
 		die "Syntax error on line $line_number:\n$line\n";
 	}
 
 	# Extract mnemonic and operands
-	my $mnemonic = $1;
-	my $first_operand = $2;
-	my $second_operand = $3;
+	my $label = $1;
+	my $mnemonic = $2;
+	my $first_operand = $3;
+	my $second_operand = $4;
 
 	if ($debug) {
 		print $line, "\n";
+		print "Label: $label\n" if $label;
 		print "Mnemonic: $mnemonic\n";
 		print "First operand: $first_operand\n";
-		print "Second operand: $second_operand\n";
+		print "Second operand: $second_operand\n" if $second_operand;
 	}
+
+	$labels{$label} = $word_count if $label;
 	
 	# Convert mnemonic to op code
-	unless (exists($op_codes{$mnemonic})) {
-		die "Error: unrecognized mnemonic: $mnemonic\n(on line $line_number)\n";
-	}
-	my $op_code = $op_codes{$mnemonic};
-
-	# Convert operands to values
+	my $op_code;
+	my $text_instruction;
 	my $additional_words = [];
 	my $instruction_bit_length = 16;
-	my $first_value = encode_value($first_operand, $additional_words);
-	my $second_value = encode_value($second_operand, $additional_words);
+
+	if (exists($op_codes{$mnemonic})) {
+		
+		$op_code = $op_codes{$mnemonic};
+		
+		# Convert operands to values
+		my $first_value = encode_value($first_operand, $additional_words);
+		my $second_value = encode_value($second_operand, $additional_words);
+		
+		# Build instruction
+		$text_instruction = sprintf("%06b%06b%04b", $second_value, $first_value, $op_code);
+	}
+	elsif (exists($nonbasic_op_codes{$mnemonic})) {
+		my $value = encode_value($first_operand, $additional_words);
+		
+		# Build instruction
+		$text_instruction = sprintf("%06b%06b%04b", $value, $nonbasic_op_codes{$mnemonic}, 0);
+	}
+	else {
+		die "Error: unrecognized mnemonic: $mnemonic\n(on line $line_number)\n";
+	}
 	
-	# Build instruction
-	my $text_instruction = sprintf("%06b%06b%04b", $second_value, $first_value, $op_code);
+	$word_count++;
 	
 	for my $additional_word (@{ $additional_words }) {
 		$instruction_bit_length += 16;
 		$text_instruction .=  $additional_word;
+		$word_count++;
 	}
 	
 	my $binary_instruction = pack("B$instruction_bit_length", $text_instruction);
@@ -154,7 +182,7 @@ sub encode_value {
 	my ($value, $additional_words_ref) = @_;
 	print "encode_value($value)\n" if $debug;
 	
-	if ($value =~ /^0x[\da-fA-F]{4}$/) { # Literal
+	if ($value =~ /^(0x[\da-fA-F]{4})|(\d+)$/) { # Literal
 		#print "literal\n";
 		push @{ $additional_words_ref }, encode_literal($value);
 		return $values{'next word'};
@@ -178,6 +206,10 @@ sub encode_value {
 		#print "value\n";
 		return $values{$value};	
 	}
+	elsif(exists($labels{$value})) {
+		push @{ $additional_words_ref }, encode_literal($labels{$value});
+		return $values{'next word'};
+	}
 	else {
 		die "Error: unrecognized value: $value\n";
 	}
@@ -185,12 +217,15 @@ sub encode_value {
 
 sub encode_literal {
 	my $value = shift;
-	#print "encode_literal($value) = ";
-	if ($value =~ /0x[\da-fA-F]{4}/) {
+
+	if ($value =~ /0x[\da-fA-F]{4}/) { # hex number
 		my $num = hex($value); # TODO: validate number size
 		my $bin = sprintf("%016b", $num);
 		#print "$bin\n";
 		return $bin;
+	}
+	elsif ($value =~ /\d+/) { # dec number
+		return sprintf("%016b", $value);
 	}
 	die "Error: illegal literal: $value\n(on line $line_number)\n";
 }
