@@ -116,6 +116,9 @@ sub write_program_counter {
 		die "Illegal program counter value: $value\n";
 	}
 
+	# Try to detect infinite loops (e.g., :crash SET PC, crash)
+	die "HALT\n" if $PC == $value + 2;
+
 	$PC = $value;
 }
 
@@ -148,12 +151,18 @@ sub dump_registers {
 }
 
 sub dump_memory {
-	for (my $memory_address = 0; $memory_address < 16; $memory_address++) {
+	print_memory_bank(0);
+	print_memory_bank(8);
+	print_memory_bank(0x2000);
+	print_memory_bank(0x2008);
+	print_memory_bank(0x10000 - 8);
+}
+
+sub print_memory_bank {
+	my $starting_address = shift;
+	for (my $memory_address = $starting_address; $memory_address < $starting_address + 8; $memory_address++) {
 		print_memory_location($memory_address);
 	}
-	for (my $memory_address = (0x10000 - 8); $memory_address < 0x10000; $memory_address++) {
-		print_memory_location($memory_address);
-	}	
 }
 
 sub print_memory_location {

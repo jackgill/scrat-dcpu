@@ -36,15 +36,19 @@ if (@ARGV != 1) {
 	die "Usage: $0 file.asm";
 }
 
-my $input_file_name = $ARGV[0];
-
-load_program($input_file_name);
+# Load object code into memory
+load_program($ARGV[0]);
 
 dump_machine_state();
 
-my $word_number = 0;
-while(my $word = read_memory(read_program_counter())) {
+# Instruction execution loop
+while(1) {
+	# Read a word from memory
+	my $word = read_memory(read_program_counter());
 
+	# Increment program counter
+	write_program_counter(read_program_counter() + 1);
+	
 	# Convert instruction to binary
 	my $instruction = sprintf("%016b", $word);
 	$instruction =~ /^
@@ -52,11 +56,12 @@ while(my $word = read_memory(read_program_counter())) {
 	([01]{6})
 	([01]{4})$/x;
 
+	# Extract op code and operands in decimal
 	my $second_value = bin2dec($1);
 	my $first_value = bin2dec($2);
 	my $op_code = bin2dec($3);
 
-	if ($op_code == 0) {
+	if ($op_code == 0) { # Non-basic instructions
 		# Decode operator
 		my $operator_ref = get_nonbasic_operator($first_value);
 
@@ -66,12 +71,12 @@ while(my $word = read_memory(read_program_counter())) {
 		# Print instruction
 		my $operator_mnemonic = get_nonbasic_opcode_mnemonic($first_value);
 
-		print "$operator_mnemonic $operand\n";
-	
+		printf "%s %s (%04x at %04x)\n", $operator_mnemonic, $operand, $word, read_program_counter();
+		
 		# Invoke operator
 		&$operator_ref($operand);
 	}
-	else {
+	else { # Basic instructions
 		# Decode operator
 		my $operator_ref = get_operator($op_code);
 
@@ -82,24 +87,16 @@ while(my $word = read_memory(read_program_counter())) {
 		# Print instruction
 		my $operator_mnemonic = get_opcode_mnemonic($op_code);
 
-		print "$operator_mnemonic $first_operand, $second_operand\n";
-	
+		printf "%s %s %s (%04x at %04x)\n", $operator_mnemonic, $first_operand, $second_operand, $word, read_program_counter();
+
+		
 		# Invoke operator
 		&$operator_ref($first_operand, $second_operand);
 	}
 	
 	# Dump machine state
 	dump_machine_state();
-
-	$word_number++;
-
-	if ($word_number > 5) {
-		die "\n";
-		# until I get halt working
-	}
 	
-	# Increment program counter
-	write_program_counter(read_program_counter() + 1);
 }
 
 # build an expression for an operand
@@ -146,8 +143,9 @@ sub resolve_operand {
 		return "[$new_value]";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
-		my $next_word = read_memory(read_program_counter() + 1);
+		my $next_word = read_memory(read_program_counter());
 		write_program_counter(read_program_counter() + 1);
+		
 		my $address = $next_word;
 		
 		my $register = '';
@@ -164,17 +162,17 @@ sub resolve_operand {
 		return "[$address + $register]";
 	}
 	elsif ($value == 0x1f) { # next word (literal)
-		my $next_word = read_memory(read_program_counter() + 1);
+		my $next_word = read_memory(read_program_counter());
 		write_program_counter(read_program_counter() + 1);
-
+		
 		my $literal = $next_word;
 		#print "resolved to literal $literal\n";
 		return $literal;
 	}
 	elsif ($value == 0x1e) { # [next word] (memory location)
-		my $next_word = read_memory(read_program_counter() + 1);
+		my $next_word = read_memory(read_program_counter());
 		write_program_counter(read_program_counter() + 1);
-
+		
 		my $address = "[$next_word]";
 		#print "resolved to memory address $address\n";
 		return $address;
@@ -221,6 +219,9 @@ sub read_value {
 	elsif ($expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
 		return read_memory($1 + read_register($2));
 	}
+	elsif ($expression eq 'PC') { # Program counter
+		return read_program_counter();
+	}
 	die "Error: read_value unrecognized expression: $expression\n";
 }
 
@@ -240,7 +241,10 @@ sub write_value {
 		write_memory($1, $right_value);
 	}
 	elsif ($left_expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
-		return write_memory($1 + read_register($2), $right_value);
+		write_memory($1 + read_register($2), $right_value);
+	}
+	elsif ($left_expression eq 'PC') { # Program counter
+		write_program_counter($right_value);
 	}
 	else {
 		die "Error: write_value unrecognized expression: $left_expression\n";
@@ -248,12 +252,12 @@ sub write_value {
 }
 
 sub skip_next_instruction {
-	my $next_word = read_memory(read_program_counter() + 1);
+	my $next_word = read_memory(read_program_counter());
+	write_program_counter(read_program_counter() + 1);
+	
 	my $next_bitstring = sprintf("%016b", $next_word);
 	$next_bitstring =~ /([01]{6})([01]{6})([01]{4})/;
-
-	write_program_counter(read_program_counter() + 1);
-
+	
 	my $first_value = bin2dec($1);
 	my $second_value = bin2dec($2);
 
@@ -477,5 +481,5 @@ sub JSR {
 	$new_sp += 0x10000 if ($new_sp < 0); # wrap stack pointer
 	write_stack_pointer($new_sp);
 	write_memory($new_sp, read_program_counter());
-	write_program_counter($value - 1); # program counter will get incremented at the end of the loop
+	write_program_counter($value);
 }

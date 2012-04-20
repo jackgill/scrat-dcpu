@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use autodie;
 
-my $debug = 1;
+my $debug = 0;
 
 #########################################
 my %op_codes = (
@@ -71,18 +71,23 @@ my $input_file_name = $ARGV[0];
 my $output_file_name = $input_file_name;
 $output_file_name =~ s/\.asm/\.o/; # TODO: make this less hacky
 
-open(my $out, '>:raw', $output_file_name); # Write output to a binary file
+# First pass
+
 open(my $in, '<', $input_file_name);
 
 my $line_number = 0;
 my $word_count = 0;
 my %labels = ();
-while(<$in>) {
+
+# Slurp assembly file
+my @lines = ();
+my @instructions = ();
+while(my $line = <$in>) {
 	# Strip newline
-	chomp;
+	chomp $line;
 
 	# Discard comments
-	my $line = (split /;/)[0];
+	$line = (split /;/, $line)[0];
 
 	# Strip leading and trailing whitespace
 	$line =~ s/^\s*//;
@@ -96,14 +101,14 @@ while(<$in>) {
 	# note that second operand is optional
 	unless ($line =~ /
 	^
-	(?::(\w+)\s+)?	
-	(\w{3})
+	(?::(\w+)\s+)?                            # label (optional)
+	(\w{3})                                   # operator
 	\s+
-	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?)
+	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?) # first operand
 	\s*
 	(?:,
 	\s+
-	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?)
+	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?) # second operand (optional)
 	)?
 	$
 	/x) {
@@ -117,15 +122,38 @@ while(<$in>) {
 	my $second_operand = $4;
 
 	if ($debug) {
-		print $line, "\n";
+		print "\n";
+		print "$line ($word_count)\n";
 		print "Label: $label\n" if $label;
 		print "Mnemonic: $mnemonic\n";
 		print "First operand: $first_operand\n";
-		print "Second operand: $second_operand\n" if $second_operand;
+		print "Second operand: $second_operand\n" if defined $second_operand;
+		print "\n";
 	}
 
 	$labels{$label} = $word_count if $label;
+
+	# Dupe'd w/ second pass
+	$word_count++;
+	$word_count += get_value_length($first_operand);
+	$word_count += get_value_length($second_operand) if defined $second_operand;
 	
+	push @instructions, [$mnemonic, $first_operand, $second_operand];
+	push @lines, $line;
+
+	# Increment line number
+	$line_number++;
+}
+close($in);
+
+# Second pass
+
+my $instruction_number = 0;
+open(my $out, '>:raw', $output_file_name); # Write output to a binary file
+for my $tokens_ref (@instructions) {
+	# Unpack tokens
+	my ($mnemonic, $first_operand, $second_operand) = @{ $tokens_ref };
+
 	# Convert mnemonic to op code
 	my $op_code;
 	my $text_instruction;
@@ -152,27 +180,23 @@ while(<$in>) {
 	else {
 		die "Error: unrecognized mnemonic: $mnemonic\n(on line $line_number)\n";
 	}
-	
-	$word_count++;
-	
+
 	for my $additional_word (@{ $additional_words }) {
 		$instruction_bit_length += 16;
 		$text_instruction .=  $additional_word;
-		$word_count++;
 	}
 	
 	my $binary_instruction = pack("B$instruction_bit_length", $text_instruction);
 
-	printf "%-20s $text_instruction\n", $line;
+	printf "%-30s $text_instruction\n", $lines[$instruction_number];
 
 	# Write instruction
 	print $out $binary_instruction;
-
-	# Increment line number
-	$line_number++;
+	
+	# Increment instruction number
+	$instruction_number++;
 }
 
-close($in);
 close($out);
 print "Wrote $output_file_name\n";
 
@@ -202,11 +226,11 @@ sub encode_value {
 		push @{ $additional_words_ref }, encode_literal($literal);
 		return $values{"[next word + $register]"};
 	}
-	elsif(exists($values{$value})) {
+	elsif(exists($values{$value})) { # value
 		#print "value\n";
 		return $values{$value};	
 	}
-	elsif(exists($labels{$value})) {
+	elsif(exists($labels{$value})) { # label
 		push @{ $additional_words_ref }, encode_literal($labels{$value});
 		return $values{'next word'};
 	}
@@ -218,14 +242,40 @@ sub encode_value {
 sub encode_literal {
 	my $value = shift;
 
-	if ($value =~ /0x[\da-fA-F]{4}/) { # hex number
+	if ($value =~ /^0x[\da-fA-F]{1,4}$/) { # hex number
 		my $num = hex($value); # TODO: validate number size
 		my $bin = sprintf("%016b", $num);
 		#print "$bin\n";
 		return $bin;
 	}
-	elsif ($value =~ /\d+/) { # dec number
+	elsif ($value =~ /^\d+$/) { # dec number
 		return sprintf("%016b", $value);
 	}
 	die "Error: illegal literal: $value\n(on line $line_number)\n";
+}
+
+# TODO: redundant w/ should_read_next_instruction?
+sub get_value_length {
+	my ($value) = @_;
+
+	print "get_value_length($value)\n" if $debug;
+	
+	if ($value =~ /^(0x[\da-fA-F]{4})|(\d+)$/) { # Literal
+		return 1;
+	}
+	elsif ($value =~ /\[\s*(0x[\da-fA-F]{4})\s*\]/) { # [literal]
+		return 1;
+	}
+	elsif ($value =~ /\[ \s* (0x\d{4}) \s* \+ \s* (\w) \s* \]/x) { # [literal + register]
+		return 1;
+	}
+	elsif(exists($values{$value})) { # value
+		return 0;
+	}
+	elsif($value =~ /\w+/) { # label
+		return 1;
+	}
+	else {
+		die "Error: get_value_length: unrecognized value: $value\n";
+	}
 }
