@@ -7,6 +7,8 @@ use lib 'lib';
 use DCPU;
 use VM;
 
+my $debug = 0;
+
 # Define operators
 my %operators = (
 	0x0 => \&dispatch_nonbasic_operator,
@@ -102,7 +104,9 @@ while(1) {
 # build an expression for an operand
 sub resolve_operand {
 	my ($value) = @_;
-	#print "Resolve $value...";
+
+	print "Resolve $value...\n" if $debug;
+	
 	if (($value >= 0x00 && $value <= 0x0f) ||
 		($value >= 0x1b && $value <= 0x1d)) { # register, [register], and special-purpose registers (SP, PC, O)
 		my $mnemonic = get_value_mnemonic($value);
@@ -177,7 +181,9 @@ sub resolve_operand {
 		#print "resolved to memory address $address\n";
 		return $address;
 	}
-	
+	elsif ($value >= 0x20 && $value < 0x40) { # short form literal
+		return $value - 0x20;
+	}
 	die "Unable to resolve operand $value\n";
 }
 

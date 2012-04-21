@@ -207,9 +207,16 @@ sub encode_value {
 	print "encode_value($value)\n" if $debug;
 	
 	if ($value =~ /^(0x[\da-fA-F]{4})|(\d+)$/) { # Literal
-		#print "literal\n";
-		push @{ $additional_words_ref }, encode_literal($value);
-		return $values{'next word'};
+		# convert hex to dec if necessary
+		$value = hex($value) if $value =~ /^0x/;
+		
+		if ($value < 0x20) { # short form value
+			return $value + 0x20;
+		}
+		else { # long form value
+			push @{ $additional_words_ref }, encode_literal($value);
+			return $values{'next word'};
+		}
 	}
 	elsif ($value =~ /\[\s*(0x[\da-fA-F]{4})\s*\]/) { # [literal]
 		#print "[literal]\n";
@@ -261,7 +268,15 @@ sub get_value_length {
 	print "get_value_length($value)\n" if $debug;
 	
 	if ($value =~ /^(0x[\da-fA-F]{4})|(\d+)$/) { # Literal
-		return 1;
+		# convert hex to dec if necessary
+		$value = hex($value) if $value =~ /^0x/;
+		
+		if ($value < 0x20) { # short form value
+			return 0;
+		}
+		else { # long form value
+			return 1;
+		}
 	}
 	elsif ($value =~ /\[\s*(0x[\da-fA-F]{4})\s*\]/) { # [literal]
 		return 1;

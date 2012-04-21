@@ -151,8 +151,10 @@ sub dump_registers {
 }
 
 sub dump_memory {
-	print_memory_bank(0);
-	print_memory_bank(8);
+	print_memory_bank(0x0);
+	print_memory_bank(0x08);
+	print_memory_bank(0x10);
+	print_memory_bank(0x18);
 	print_memory_bank(0x2000);
 	print_memory_bank(0x2008);
 	print_memory_bank(0x10000 - 8);
