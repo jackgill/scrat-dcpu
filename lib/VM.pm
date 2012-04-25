@@ -6,9 +6,10 @@ use autodie;
 
 use Exporter;
 use DCPU;
+use Monitor;
 
 our @ISA = qw(Exporter);
-our @EXPORT =qw(read_register write_register read_memory write_memory read_overflow write_overflow read_stack_pointer write_stack_pointer read_program_counter write_program_counter load_program dump_registers dump_memory dump_machine_state);
+our @EXPORT = qw(read_register write_register read_memory write_memory read_overflow write_overflow read_stack_pointer write_stack_pointer read_program_counter write_program_counter load_data dump_registers dump_memory dump_machine_state);
 
 # Special purpose registers
 my $PC = 0; # Program Counter
@@ -74,6 +75,13 @@ sub write_memory {
 	unless ($value >= 0 && $value < $word_size) {
 		die "Illegal memory value: $value\n";
 	}
+
+	# Video RAM
+	if ($address >= 0x8000 && $address < 0x8180) {
+		if ($value != 0) {
+			Monitor::draw_character($address, $value);
+		}
+	}
 	$memory->[$address] = $value;
 }
 
@@ -117,20 +125,21 @@ sub write_program_counter {
 	}
 
 	# Try to detect infinite loops (e.g., :crash SET PC, crash)
-	die "HALT\n" if $PC == $value + 2;
+	#die "HALT\n" if $PC == $value + 2;
 
 	$PC = $value;
 }
 
-sub load_program {
-	my $input_file_name = shift;
+sub load_data {
+	my ($input_file_name, $memory_address) = @_;
+
 	open(my $in, '<:raw', $input_file_name);
-	
-	my $memory_address = 0;
+
 	while(my $word = read_word($in)) {
 		write_memory($memory_address, bin2dec($word));
 		$memory_address++;
 	}
+	
 	close $in;
 }
 
@@ -152,11 +161,14 @@ sub dump_registers {
 
 sub dump_memory {
 	print_memory_bank(0x0);
-	print_memory_bank(0x08);
-	print_memory_bank(0x10);
-	print_memory_bank(0x18);
-	print_memory_bank(0x2000);
-	print_memory_bank(0x2008);
+	#print_memory_bank(0x08);
+	#print_memory_bank(0x10);
+	#print_memory_bank(0x18);
+	#print_memory_bank(0x2000);
+	#print_memory_bank(0x2008);
+	print_memory_bank(0x8000);
+	#print_memory_bank(0x8180);
+	#print_memory_bank(0x8188);
 	print_memory_bank(0x10000 - 8);
 }
 

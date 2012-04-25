@@ -1,4 +1,6 @@
 * Notes
+** Installing Tk
+cpan Tk
 * To Do
 ** DONE Assembler should output actual binary
 ** DONE Create a disassembler
@@ -49,5 +51,26 @@ should replace the label with the memory address of the target
 ** TODO assembler should accept -v flag
 ** TODO emulator needs to validate that the input is an object code file
 * Scratch
-new goal for the assembler: be able to reproduce notch's test program
+Goals: 
+- Find and run some programs from the internet
+- Compare code w/ other assemblers/emulators
+- test assembler/emulator interop with other distributions
+- Keyboard input
+** Graphics
+- use Tk for GUI toolkit
+- map 'logical pixels' to 'physical pixels' -- get ahold of leaked font, create a character renderer
+do I want a string representation of a binary number, or a sequence of 1's and 0's? They're equivalent, but the second representation seems more natural.
 
+- graphics
+- keyboard
+- new spec
+- clock / interupts
+
+ok, I've got some characters drawing. now I need a display modules, a complete font, and a hook in the write_memory function in the VM to map the memory to the display. 
+
+I want to disentangle the DCPU and GUI code. perhaps two process, one to run the GUI loop, and one to run the DCPU? Seems more complicated, but I really don't want the DCPU clock / interupt cycle tied to the Tk event loop.
+
+The way I see it, the DCPU should be calling the shots. The monitor should be running the event loop in its own process/thread, and receiving instructions from the DCPU.
+
+or I could just decide that this is inherently a GUI application...
+step?
