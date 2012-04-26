@@ -92,7 +92,7 @@ sub execute_cycle {
 	}
 	
 	# Dump machine state
-	VM::dump_machine_state();
+	#VM::dump_machine_state();
 }
 
 

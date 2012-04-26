@@ -6,34 +6,33 @@ use autodie;
 
 use Exporter;
 use Tk;
-use Emulator;
-use VM;
 use DCPU;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(draw_character gui_loop);
+our @EXPORT = qw(draw_character set_parent_frame);
 
-my $debug = 1;
+my $debug = 0;
+my $canvas;
 
-my $pixel_size = 10;
+# Set up dimensions
+my $pixel_size = 3;
 my $character_width = 4 * $pixel_size;
+my $character_height = 8 * $pixel_size;
+my $n_rows = 12;
+my $n_columns = 32;
 
-my $mw = MainWindow->new();
-my $canvas = $mw->Canvas(-width => 400, -height => 400);
-$canvas->pack(-side => 'top', -expand => 1, -fill => 'both');
-$mw->Button( -text => 'Step', -command => \&Emulator::execute_cycle)->pack(-side => 'left');
-draw_button('Quit', sub { exit });
 
-sub gui_loop {
-	MainLoop();
-}
+sub set_parent_frame {
+	my $parent_frame = shift;
 
-sub draw_button {
-	my ($label, $callback) = @_;
-	$mw->Button(
-        -text    => $label,
-        -command => $callback,
-		)->pack;
+	$canvas = $parent_frame->Canvas(
+		-width => $n_columns * $character_width,
+		-height => $n_rows * $character_height
+		)->pack(
+		-padx => 10,
+		-pady => 10,
+		-side => 'left'
+		);
 }
 
 sub draw_character {
@@ -48,7 +47,7 @@ sub draw_character {
 	my $word2 = VM::read_memory(0x8180 + (2 *$character));
 	my $word1 = VM::read_memory(0x8181 + (2 *$character));
 
-	print "draw_character($character)\n";
+	print "draw_character($character)\n" if $debug;
 	
 	my $x = ($address - 0x8000) * $character_width;
 	my $y = 0;

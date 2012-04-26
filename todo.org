@@ -45,6 +45,10 @@ should replace the label with the memory address of the target
 ** DONE implement JSR instruction
 ** DONE implement short-form literals
 ** DONE add support decimal and short form hex literals to assembler
+** TODO pad monitor
+** TODO place buttons
+** TODO layout and bind registers
+
 ** TODO test overflow behavior for operators that set overflow
 ** TODO test that overflow register can read by instructions
 ** TODO disassembler should pretty-print expressions
@@ -55,22 +59,21 @@ Goals:
 - Find and run some programs from the internet
 - Compare code w/ other assemblers/emulators
 - test assembler/emulator interop with other distributions
-- Keyboard input
 ** Graphics
-- use Tk for GUI toolkit
-- map 'logical pixels' to 'physical pixels' -- get ahold of leaked font, create a character renderer
-do I want a string representation of a binary number, or a sequence of 1's and 0's? They're equivalent, but the second representation seems more natural.
 
 - graphics
 - keyboard
 - new spec
 - clock / interupts
 
-ok, I've got some characters drawing. now I need a display modules, a complete font, and a hook in the write_memory function in the VM to map the memory to the display. 
 
-I want to disentangle the DCPU and GUI code. perhaps two process, one to run the GUI loop, and one to run the DCPU? Seems more complicated, but I really don't want the DCPU clock / interupt cycle tied to the Tk event loop.
+- what about a way to dynamically assemble & load new instructions? A REPL for DCPU-16
 
-The way I see it, the DCPU should be calling the shots. The monitor should be running the event loop in its own process/thread, and receiving instructions from the DCPU.
+need to lay out the GUI.
+bind ESC to quit
+some kind of edge effect with canvas
 
-or I could just decide that this is inherently a GUI application...
-step?
+- play/stop/reset
+- clean up fit/finish
+- title
+- scrat image?
