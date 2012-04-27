@@ -45,10 +45,9 @@ should replace the label with the memory address of the target
 ** DONE implement JSR instruction
 ** DONE implement short-form literals
 ** DONE add support decimal and short form hex literals to assembler
-** TODO pad monitor
-** TODO place buttons
-** TODO layout and bind registers
-
+** DONE pad monitor
+** DONE place buttons
+** DONE layout and bind registers
 ** TODO test overflow behavior for operators that set overflow
 ** TODO test that overflow register can read by instructions
 ** TODO disassembler should pretty-print expressions
@@ -69,11 +68,12 @@ Goals:
 
 - what about a way to dynamically assemble & load new instructions? A REPL for DCPU-16
 
-need to lay out the GUI.
 bind ESC to quit
 some kind of edge effect with canvas
 
 - play/stop/reset
 - clean up fit/finish
-- title
 - scrat image?
+
+- label showing the instruction that was just executed
+- label displaying error messages from the emulator

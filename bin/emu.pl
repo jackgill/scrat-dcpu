@@ -17,7 +17,7 @@ VM::load_data($ARGV[0], 0);
 
 # Load font into memory
 # TODO: allow font file to be specified as command-line argument
-VM::load_data('font.bin', 0x8180);
+VM::load_data('data/font.bin', 0x8180);
 
 #VM::dump_machine_state();
 
@@ -28,6 +28,8 @@ my $mw = MainWindow->new(
 	-background => 'gray'
 	);
 $mw->title('scrat-dcpu');
+my $icon = $mw->Photo(-file => 'data/scrat_icon.gif');
+$mw->Icon(-image => $icon);
 
 my $top_frame = $mw->Frame(
 	-background => 'gray'
@@ -52,7 +54,9 @@ render_buttons();
 MainLoop();
 
 sub render_buttons {
-	my $frame = $mw->Frame();
+	my $frame = $mw->Frame(
+		-background => 'gray'
+		);
 	
 	# Step button
 	$frame->Button(
