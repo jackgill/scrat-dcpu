@@ -57,6 +57,9 @@ sub draw_character {
 
 sub draw_glyph {
 	my ($x, $y, $word1, $word2) = @_;
+
+	print "draw_glyph($x, $y, $word1, $word2)\n" if $debug;
+	
 	my $string = sprintf("%016b%016b", $word1, $word2);
 	$string =~ /(\d{8})(\d{8})(\d{8})(\d{8})/;
 	draw_column($x, $y, $4);

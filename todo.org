@@ -73,7 +73,7 @@ some kind of edge effect with canvas
 
 - play/stop/reset
 - clean up fit/finish
-- scrat image?
 
 - label showing the instruction that was just executed
 - label displaying error messages from the emulator
+- highlight PC and SP

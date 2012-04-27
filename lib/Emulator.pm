@@ -11,7 +11,7 @@ use VM;
 use Monitor;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(execute_cycle);
+our @EXPORT = qw(execute_cycle get_current_instruction);
 
 my $debug = 0;
 
@@ -38,6 +38,12 @@ my %operators = (
 my %nonbasic_operators = (
 	0x01 => \&JSR,
 	);
+
+my $current_instruction;
+
+sub get_current_instruction {
+	return $current_instruction;
+}
 
 sub execute_cycle {
 	# Read a word from memory
@@ -68,7 +74,7 @@ sub execute_cycle {
 		# Print instruction
 		my $operator_mnemonic = get_nonbasic_opcode_mnemonic($first_value);
 
-		printf "%s %s (%04x at %04x)\n", $operator_mnemonic, $operand, $word, read_program_counter();
+		$current_instruction = sprintf("%s %s\n", $operator_mnemonic, $operand);
 		
 		# Invoke operator
 		&$operator_ref($operand);
@@ -84,8 +90,7 @@ sub execute_cycle {
 		# Print instruction
 		my $operator_mnemonic = get_opcode_mnemonic($op_code);
 
-		printf "%s %s %s (%04x at %04x)\n", $operator_mnemonic, $first_operand, $second_operand, $word, read_program_counter();
-
+		$current_instruction = sprintf("%s %s %s\n", $operator_mnemonic, $first_operand, $second_operand);
 		
 		# Invoke operator
 		&$operator_ref($first_operand, $second_operand);
@@ -484,3 +489,5 @@ sub JSR {
 	write_memory($new_sp, read_program_counter());
 	write_program_counter($value);
 }
+
+1;

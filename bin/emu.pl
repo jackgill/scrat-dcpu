@@ -31,20 +31,33 @@ $mw->title('scrat-dcpu');
 my $icon = $mw->Photo(-file => 'data/scrat_icon.gif');
 $mw->Icon(-image => $icon);
 
+# Top frame
 my $top_frame = $mw->Frame(
 	-background => 'gray'
 	);
 
 # Monitor
-
 Monitor::set_parent_frame($top_frame);
 
+# Registers
 my %register_labels = ();
 my @registers = ( 'A', 'B', 'C', 'X', 'Y', 'Z', 'I', 'J', 'PC', 'SP', 'O');
 render_registers();
 
+# Memory
 my %memory_labels = ();
 render_memory();
+
+# Instruction
+my $instruction_label = $top_frame->Label( -text => 'Instruction' )->pack(
+	-anchor => 'w',
+	-pady => 10
+	);
+
+# Message
+my $message_label = $top_frame->Label( -text => 'Message' )->pack(
+	-anchor => 'w'
+	);
 
 $top_frame->pack(
 	-side => 'top'
@@ -62,7 +75,14 @@ sub render_buttons {
 	$frame->Button(
 		-text => 'Step',
 		-command => sub {
-			Emulator::execute_cycle();
+			eval {
+				Emulator::execute_cycle();
+			};
+			if ($@) {
+				$message_label->configure(
+					-text => $@
+					);
+			}
 			update_gui();
 		}
 		)->pack(
@@ -135,7 +155,6 @@ sub render_memory_bank {
 				-width => 8
 				)->pack(
 				-side => 'left'
-				
 				);
 		}
 		 my $label = $frame->Label(
@@ -166,6 +185,9 @@ sub get_register_value {
 sub update_gui {
 	update_register_labels();
 	update_memory_labels();
+	$instruction_label->configure(
+		-text => Emulator::get_current_instruction()
+		);
 }
 
 sub update_register_labels {
