@@ -6,6 +6,8 @@ This is my learning project for DCPU programming. It's named scrat-DCPU since I'
 
 # Getting started
 
+This project requires Perl 5.10 or later, and the Tk module from CPAN.
+
 To get started, assemble one of the test files:
 
     perl bin/asm.pl test/test_set.asm
