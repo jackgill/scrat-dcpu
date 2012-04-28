@@ -16,27 +16,47 @@ our @EXPORT = qw(execute_cycle get_current_instruction);
 my $debug = 0;
 
 # Define operators
-my %operators = (
-	0x0 => \&dispatch_nonbasic_operator,
-	0x1 => \&SET,
-	0x2 => \&ADD,
-	0x3 => \&SUB,
-	0x4 => \&MUL,
-	0x5 => \&DIV,
-	0x6 => \&MOD,
-	0x7 => \&SHL,
-	0x8 => \&SHR,
-	0x9 => \&AND,
-	0xa => \&BOR,
-	0xb => \&XOR,
-	0xc => \&IFE,
-	0xd => \&IFN,
-	0xe => \&IFG,
-	0xf => \&IFB,
+my %basic_operators = (
+	0x00 => \&dispatch_special_operator,
+	0x01 => \&SET,
+	0x02 => \&ADD,
+	0x03 => \&SUB,
+	0x04 => \&MUL,
+	0x05 => \&not_implemented, # MLI
+	0x06 => \&DIV,
+	0x07 => \&not_implemented, # DVI
+	0x08 => \&MOD,
+	0x09 => \&not_implemented, # MDI
+	0x0a => \&AND,
+	0x0b => \&BOR,
+	0x0c => \&XOR,
+	0x0d => \&SHR,
+	0x0e => \&not_implemented, # ASR
+	0x0f => \&SHL,
+	0x10 => \&IFB,
+	0x11 => \&not_implemented, # IFC
+	0x12 => \&IFE,
+	0x13 => \&IFN,
+	0x14 => \&IFG,
+	0x15 => \&not_implemented, # IFA
+	0x16 => \&not_implemented, # IFL
+	0x17 => \&not_implemented, # IFU
+	0x1a => \&not_implemented, # ADX
+	0x1b => \&not_implemented, # SBX
+	0x1e => \&not_implemented, # STI
+	0x1f => \&not_implemented, # STD
 	);
 
-my %nonbasic_operators = (
+my %special_operators = (
 	0x01 => \&JSR,
+	0x08 => \&not_implemented, # INT
+	0x09 => \&not_implemented, # IAG
+	0x0a => \&not_implemented, # IAS
+	0x0b => \&not_implemented, # RFI
+	0x0c => \&not_implemented, # IAQ
+	0x10 => \&not_implemented, # HWN
+	0x11 => \&not_implemented, # HWQ
+	0x12 => \&not_implemented, # HWI
 	);
 
 my $current_instruction;
@@ -56,23 +76,23 @@ sub execute_cycle {
 	my $instruction = sprintf("%016b", $word);
 	$instruction =~ /^
 	([01]{6})
-	([01]{6})
-	([01]{4})$/x;
+	([01]{5})
+	([01]{5})$/x;
 
 	# Extract op code and operands in decimal
 	my $second_value = bin2dec($1);
 	my $first_value = bin2dec($2);
 	my $op_code = bin2dec($3);
 
-	if ($op_code == 0) { # Non-basic instructions
+	if ($op_code == 0) { # Special op code
 		# Decode operator
-		my $operator_ref = get_nonbasic_operator($first_value);
+		my $operator_ref = get_special_operator($first_value);
 
 		# Resolve operand
 		my $operand = resolve_operand($second_value);
 
 		# Print instruction
-		my $operator_mnemonic = get_nonbasic_opcode_mnemonic($first_value);
+		my $operator_mnemonic = DCPU::get_special_opcode_mnemonic($first_value);
 
 		$current_instruction = sprintf("%s %s\n", $operator_mnemonic, $operand);
 		
@@ -81,14 +101,14 @@ sub execute_cycle {
 	}
 	else { # Basic instructions
 		# Decode operator
-		my $operator_ref = get_operator($op_code);
+		my $operator_ref = get_basic_operator($op_code);
 
 		# Resolve operands
 		my $first_operand = resolve_operand($first_value);
 		my $second_operand = resolve_operand($second_value);
 
 		# Print instruction
-		my $operator_mnemonic = get_opcode_mnemonic($op_code);
+		my $operator_mnemonic = DCPU::get_basic_opcode_mnemonic($op_code);
 
 		$current_instruction = sprintf("%s %s %s\n", $operator_mnemonic, $first_operand, $second_operand);
 		
@@ -188,21 +208,21 @@ sub resolve_operand {
 }
 
 # get the subroutine that implements an opcode
-sub get_operator {
+sub get_basic_operator {
 	my ($op_code) = @_;
-	if (exists($operators{$op_code})) {
-		return $operators{$op_code};
+	if (exists($basic_operators{$op_code})) {
+		return $basic_operators{$op_code};
 	}
 	die "Unrecognized op_code: $op_code\n";
 }
 
-sub get_nonbasic_operator {
+sub get_special_operator {
 	my ($op_code) = @_;
-	if (exists($nonbasic_operators{$op_code})) {
-		return $nonbasic_operators{$op_code};
+	if (exists($special_operators{$op_code})) {
+		return $special_operators{$op_code};
 	}
 	else {
-		die "Error: unrecognized non-basic opcode: $op_code\n";
+		die "Error: unrecognized special opcode: $op_code\n";
 	}
 }
 
@@ -490,4 +510,7 @@ sub JSR {
 	write_program_counter($value);
 }
 
+sub not_implemented {
+	die "Not implemented\n";
+}
 1;

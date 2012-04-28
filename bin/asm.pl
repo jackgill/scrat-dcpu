@@ -1,49 +1,72 @@
 use strict;
 use warnings;
 use autodie;
+use lib 'lib';
+
+use DCPU;
 
 my $debug = 0;
 
 #########################################
-my %op_codes = (
-	'SET' => 0x1, # sets a to b
-	'ADD' => 0x2, # sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
-	'SUB' => 0x3, # sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
-	'MUL' => 0x4, # sets a to a*b, sets O to ((a*b)>>16)&0xffff
-	'DIV' => 0x5, # sets a to a/b, sets O to ((a<<16)/b)&0xffff. if b==0, sets a and O to 0 instead.
-	'MOD' => 0x6, # sets a to a%b. if b==0, sets a to 0 instead.
-	'SHL' => 0x7, # sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
-	'SHR' => 0x8, # sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
-	'AND' => 0x9, # sets a to a&b
-	'BOR' => 0xa, # sets a to a|b
-	'XOR' => 0xb, # sets a to a^b
-	'IFE' => 0xc, # performs next instruction only if a==b
-	'IFN' => 0xd, # performs next instruction only if a!=b
-	'IFG' => 0xe, # performs next instruction only if a>b
-	'IFB' => 0xf, # performs next instruction only if (a&b)!=0
+my %basic_op_codes = (
+	'SET' => 0x01,
+	'ADD' => 0x02,
+	'SUB' => 0x03,
+	'MUL' => 0x04,
+	'MLI' => 0x05,
+	'DIV' => 0x06,
+	'DVI' => 0x07,
+	'MOD' => 0x08,
+	'MDI' => 0x09,
+	'AND' => 0x0a,
+	'BOR' => 0x0b,
+	'XOR' => 0x0c,
+	'SHR' => 0x0d,
+	'ASR' => 0x0e,
+	'SHL' => 0x0f,
+	'IFB' => 0x10,
+	'IFC' => 0x11,
+	'IFE' => 0x12,
+	'IFN' => 0x13,
+	'IFG' => 0x14,
+	'IFA' => 0x15,
+	'IFL' => 0x16,
+	'IFU' => 0x17,
+	'ADX' => 0x1a,
+	'SBX' => 0x1b,
+	'STI' => 0x1e,
+	'STD' => 0x1f,
 	);
 
-my %nonbasic_op_codes = (
+my %special_op_codes = (
 	'JSR' => 0x01,
+	'INT' => 0x08,
+	'IAG' => 0x09,
+	'IAS' => 0x0a,
+	'RFI' => 0x0b,
+	'IAQ' => 0x0c,
+	'HWN' => 0x10,
+	'HWQ' => 0x11,
+	'HWI' => 0x12,
 	);
 
 my %values = (
-	'A' => 0x00, # Register A
-	'B' => 0x01, # Register B
-	'C' => 0x02, # Register C
-	'X' => 0x03, # Register X
-	'Y' => 0x04, # Register Y
-	'Z' => 0x05, # Register Z
-	'I' => 0x06, # Register I
-	'J' => 0x07, # Register J
-	'[A]' => 0x08, # Value of register A
-	'[B]' => 0x09, # Value of register B
-	'[C]' => 0x0a, # Value of register C
-	'[X]' => 0x0b, # Value of register X
-	'[Y]' => 0x0c, # Value of register Y
-	'[Z]' => 0x0d, # Value of register Z
-	'[I]' => 0x0e, # Value of register I
-	'[J]' => 0x0f, # Value of register J
+	'A' => 0x00,
+	'B' => 0x01,
+	'C' => 0x02,
+	'X' => 0x03,
+	'Y' => 0x04,
+	'Z' => 0x05,
+	'I' => 0x06,
+	'J' => 0x07,
+	'[A]' => 0x08,
+	'[B]' => 0x09,
+	'[C]' => 0x0a,
+	'[X]' => 0x0b,
+	'[Y]' => 0x0c,
+	'[Z]' => 0x0d,
+	'[I]' => 0x0e,
+	'[J]' => 0x0f,
 	'[next word + A]' => 0x10,
 	'[next word + B]' => 0x11,
 	'[next word + C]' => 0x12,
@@ -53,11 +76,12 @@ my %values = (
 	'[next word + I]' => 0x16,
 	'[next word + J]' => 0x17,
 	'POP' => 0x18,
+	'PUSH' => 0x18,
 	'PEEK' => 0x19,
-	'PUSH' => 0x1a,
+	'PICK' => 0x1a,
 	'SP' => 0x1b,
 	'PC' => 0x1c,
-	'O' => 0x1d,
+	'EX' => 0x1d,
 	'[next word]' => 0x1e,
 	'next word' => 0x1f,
 	);
@@ -160,35 +184,41 @@ for my $tokens_ref (@instructions) {
 	my $additional_words = [];
 	my $instruction_bit_length = 16;
 
-	if (exists($op_codes{$mnemonic})) {
+	# Build first word of instruction
+	my $instruction_format = "%06b%05b%05b";
+	if (exists($basic_op_codes{$mnemonic})) {
 		
-		$op_code = $op_codes{$mnemonic};
+		$op_code = $basic_op_codes{$mnemonic};
 		
 		# Convert operands to values
 		my $first_value = encode_value($first_operand, $additional_words);
 		my $second_value = encode_value($second_operand, $additional_words);
 		
 		# Build instruction
-		$text_instruction = sprintf("%06b%06b%04b", $second_value, $first_value, $op_code);
+		$text_instruction = sprintf($instruction_format, $second_value, $first_value, $op_code);
 	}
-	elsif (exists($nonbasic_op_codes{$mnemonic})) {
+	elsif (exists($special_op_codes{$mnemonic})) {
 		my $value = encode_value($first_operand, $additional_words);
 		
 		# Build instruction
-		$text_instruction = sprintf("%06b%06b%04b", $value, $nonbasic_op_codes{$mnemonic}, 0);
+		$text_instruction = sprintf($instruction_format, $value, $special_op_codes{$mnemonic}, 0);
 	}
 	else {
 		die "Error: unrecognized mnemonic: $mnemonic\n(on line $line_number)\n";
 	}
 
+	my @hex_words = ( sprintf("%04x", DCPU::bin2dec($text_instruction)) );
+
+	# Build additional words of instruction
 	for my $additional_word (@{ $additional_words }) {
 		$instruction_bit_length += 16;
 		$text_instruction .=  $additional_word;
+		push @hex_words, sprintf("%04x", DCPU::bin2dec($additional_word));
 	}
 	
 	my $binary_instruction = pack("B$instruction_bit_length", $text_instruction);
 
-	printf "%-30s $text_instruction\n", $lines[$instruction_number];
+	printf "%-30s %s\n", $lines[$instruction_number], join(' ', @hex_words);
 
 	# Write instruction
 	print $out $binary_instruction;

@@ -6,7 +6,7 @@ use warnings;
 use Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_opcode_mnemonic get_nonbasic_opcode_mnemonic read_word read_instruction bin2dec should_read_next_word);
+our @EXPORT = qw(disassemble_instruction get_value_mnemonic get_basic_opcode_mnemonic get_special_opcode_mnemonic read_word read_instruction bin2dec should_read_next_word);
 
 # Define mnemonics
 my %value_mnemonics = (
@@ -44,40 +44,60 @@ my %value_mnemonics = (
 	0x1f => 'next word',
 	);
 
-my %opcode_mnemonics = (
-	0x1 => 'SET',
-	0x2 => 'ADD',
-	0x3 => 'SUB',
-	0x4 => 'MUL',
-	0x5 => 'DIV',
-	0x6 => 'MOD',
-	0x7 => 'SHL',
-	0x8 => 'SHR',
-	0x9 => 'AND',
-	0xa => 'BOR',
-	0xb => 'XOR',
-	0xc => 'IFE',
-	0xd => 'IFN',
-	0xe => 'IFG',
-	0xf => 'IFB',
+my %basic_opcode_mnemonics = (
+	0x01 => 'SET',
+	0x02 => 'ADD',
+	0x03 => 'SUB',
+	0x04 => 'MUL',
+	0x05 => 'MLI',
+	0x06 => 'DIV',
+	0x07 => 'DVI',
+	0x08 => 'MOD',
+	0x09 => 'MDI',
+	0x0a => 'AND',
+	0x0b => 'BOR',
+	0x0c => 'XOR',
+	0x0d => 'SHR',
+	0x0e => 'ASR',
+	0x0f => 'SHL',
+	0x10 => 'IFB',
+	0x11 => 'IFC',
+	0x12 => 'IFE',
+	0x13 => 'IFN',
+	0x14 => 'IFG',
+	0x15 => 'IFA',
+	0x16 => 'IFL',
+	0x17 => 'IFU',
+	0x1a => 'ADX',
+	0x1b => 'SBX',
+	0x1e => 'STI',
+	0x1f => 'STD',
 	);
 
-my %nonbasic_opcode_mnemonics = (
-	0x1 => 'JSR',
+my %special_opcode_mnemonics = (
+	0x01 => 'JSR',
+	0x08 => 'INT',
+	0x09 => 'IAG',
+	0x0a => 'IAS',
+	0x0b => 'RFI',
+	0x0c => 'IAQ',
+	0x10 => 'HWN',
+	0x11 => 'HWQ',
+	0x12 => 'HWI',
 	);
 
-sub get_opcode_mnemonic {
+sub get_basic_opcode_mnemonic {
 	my $opcode = shift;
-	if (exists($opcode_mnemonics{$opcode})) {
-		return $opcode_mnemonics{$opcode};
+	if (exists($basic_opcode_mnemonics{$opcode})) {
+		return $basic_opcode_mnemonics{$opcode};
 	}
 	die "Error: Unrecognized opcode: $opcode\n";
 }
 
-sub get_nonbasic_opcode_mnemonic {
+sub get_special_opcode_mnemonic {
 	my $opcode = shift;
-	if (exists($nonbasic_opcode_mnemonics{$opcode})) {
-		return $nonbasic_opcode_mnemonics{$opcode};
+	if (exists($special_opcode_mnemonics{$opcode})) {
+		return $special_opcode_mnemonics{$opcode};
 	}
 	die "Error: Unrecognized opcode: $opcode\n";
 }

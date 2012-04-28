@@ -55,25 +55,20 @@ should replace the label with the memory address of the target
 ** TODO emulator needs to validate that the input is an object code file
 * Scratch
 Goals: 
+- keyboard
+- clock / interupts
 - Find and run some programs from the internet
 - Compare code w/ other assemblers/emulators
 - test assembler/emulator interop with other distributions
-** Graphics
 
-- graphics
-- keyboard
-- new spec
-- clock / interupts
-
-
+TODO:
 - what about a way to dynamically assemble & load new instructions? A REPL for DCPU-16
-
-bind ESC to quit
-some kind of edge effect with canvas
-
+- bind ESC to quit
+- some kind of edge effect with canvas
 - play/stop/reset
 - clean up fit/finish
-
-- label showing the instruction that was just executed
-- label displaying error messages from the emulator
 - highlight PC and SP
+
+Next:
+- new spec
+- implement monitor w/ interupts
