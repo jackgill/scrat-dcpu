@@ -67,22 +67,19 @@ sub get_current_instruction {
 
 sub execute_cycle {
 	# Read a word from memory
-	my $word = read_memory(read_program_counter());
+	my $word = VM::read_memory(read_program_counter());
 
 	# Increment program counter
 	VM::write_program_counter(read_program_counter() + 1);
 	
 	# Convert instruction to binary
 	my $instruction = sprintf("%016b", $word);
-	$instruction =~ /^
-	([01]{6})
-	([01]{5})
-	([01]{5})$/x;
+	$instruction =~ $DCPU::instruction_regex;
 
 	# Extract op code and operands in decimal
-	my $second_value = bin2dec($1);
-	my $first_value = bin2dec($2);
-	my $op_code = bin2dec($3);
+	my $second_value = DCPU::bin2dec($1);
+	my $first_value = DCPU::bin2dec($2);
+	my $op_code = DCPU::bin2dec($3);
 
 	if ($op_code == 0) { # Special op code
 		# Decode operator
@@ -314,10 +311,10 @@ sub ADD {
 	my $result = $first_value + $second_value;
 	
 	if ($result > $VM::word_size) {
-		write_overflow(0x0001);
+		write_excess(0x0001);
 	}
 	else {
-		write_overflow(0x0000);
+		write_excess(0x0000);
 	}
 	
 	write_value($first_operand, $result);
@@ -333,10 +330,10 @@ sub SUB {
 	my $result = $first_value - $second_value;
 	
 	if ($result < 0) {
-		write_overflow(0xffff);
+		write_excess(0xffff);
 	}
 	else {
-		write_overflow(0x0000);
+		write_excess(0x0000);
 	}
 	
 	write_value($first_operand, $result);
@@ -351,7 +348,7 @@ sub MUL {
 	
 	my $result = $first_value * $second_value;
 
-	write_overflow( (($first_value * $second_value) >> 16) & 0xffff);
+	write_excess( (($first_value * $second_value) >> 16) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -365,7 +362,7 @@ sub DIV {
 	
 	my $result = int($first_value / $second_value);
 
-	write_overflow( (($first_value << 16) / $second_value) & 0xffff);
+	write_excess( (($first_value << 16) / $second_value) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -395,7 +392,7 @@ sub SHL {
 	
 	my $result = $first_value << $second_value;
 
-	write_overflow( (($first_value << $second_value) >> 16) & 0xffff);
+	write_excess( (($first_value << $second_value) >> 16) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -409,7 +406,7 @@ sub SHR {
 	
 	my $result = $first_value >> $second_value;
 
-	write_overflow( (($first_value << 16) >> $second_value) & 0xffff);
+	write_excess( (($first_value << 16) >> $second_value) & 0xffff);
 	
 	write_value($first_operand, $result);
 }

@@ -1,3 +1,12 @@
+# This module encapsulates the state of the DCPU-16, which currently consists of the following:
+# 
+# 8 general purpose registers
+# 4 special purpose registers
+# 65536 words of memory
+#
+# There is also a method to load data from a file into RAM, and a method to dump the state
+# of the VM to the terminal.
+
 package VM;
 
 use strict;
@@ -9,12 +18,31 @@ use DCPU;
 use Monitor;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(read_register write_register read_memory write_memory read_overflow write_overflow read_stack_pointer write_stack_pointer read_program_counter write_program_counter load_data dump_registers dump_memory dump_machine_state);
+our @EXPORT = qw(
+read_register
+write_register
 
-# Special purpose registers
-my $PC = 0; # Program Counter
-my $SP = 0; # Stack Pointer
-my $O = 0; # Overflow
+read_program_counter
+write_program_counter
+
+read_stack_pointer
+write_stack_pointer
+
+read_excess
+write_excess
+
+read_interupt_address
+write_interupt_address
+
+read_memory
+write_memory
+
+load_data
+
+dump_machine_state
+);
+
+# Variables containing VM state:
 
 # General purpose registers
 my %registers = (
@@ -28,9 +56,15 @@ my %registers = (
 	'J' => 0,
 	);
 
+# Special purpose registers
+my $PC = 0; # Program Counter
+my $SP = 0; # Stack Pointer
+my $EX = 0; # Excess
+my $IA = 0; # Interupt address
+
 # Memory
 our $word_size = 0x10000; # 16 bit word
-my $n_memory_words = 0x10000;
+my $n_memory_words = 0x10000; # 65536 words of RAM
 my $memory = [];
 
 # Zero out memory initially
@@ -38,8 +72,9 @@ for (my $i = 0; $i < $n_memory_words; $i++) {
 	$memory->[$i] = 0;
 }
 
-# VM
+# Methods for manipulating VM state
 
+# Read a general purpose register
 sub read_register {
 	my $mnemonic = shift;
 	if (exists($registers{$mnemonic})) {
@@ -48,6 +83,7 @@ sub read_register {
 	die "Error: unknown register: $mnemonic\n";
 }
 
+# Write to a general purpose register
 sub write_register {
 	my ($mnemonic, $value) = @_;
 	unless (exists($registers{$mnemonic})) {
@@ -59,6 +95,74 @@ sub write_register {
 	$registers{$mnemonic} = $value;
 }
 
+# Read the program counter
+sub read_program_counter {
+	return $PC;
+}
+
+# Write to the program counter
+sub write_program_counter {
+	my $value = shift;
+	
+	unless ($value >= 0 && $value < $word_size) {
+		die "Illegal program counter value: $value\n";
+	}
+
+	# Try to detect infinite loops (e.g., :crash SET PC, crash)
+	#die "HALT\n" if $PC == $value + 2;
+
+	$PC = $value;
+}
+
+# Read the stack pointer
+sub read_stack_pointer {
+	return $SP;
+}
+
+# Write to the stack pointer
+sub write_stack_pointer {
+	my $value = shift;
+
+	unless ($value >= 0 && $value < $word_size) {
+		die "Illegal stack pointer value: $value\n";
+	}
+
+	$SP = $value;
+}
+
+# Read the excess register
+sub read_excess {
+	return $EX;
+}
+
+# Write to the excess register
+sub write_excess {
+	my $value = shift;
+	
+	unless ($value >= 0 && $value < $word_size) {
+		die "Illegal excess value: $value\n";
+	}
+
+	$EX = $value;
+}
+
+# Read the interupt address
+sub read_interupt_address {
+	return $IA;
+}
+
+# Write to the interupt address
+sub write_interupt_address {
+	my $value = shift;
+	
+	unless ($value >= 0 && $value < $word_size) {
+		die "Illegal interupt address value: $value\n";
+	}
+
+	$IA = $value;
+}
+
+# Read a location in memory
 sub read_memory {
 	my $address = shift;
 	unless ($address >= 0 && $address < $n_memory_words) {
@@ -67,6 +171,7 @@ sub read_memory {
 	return $memory->[$address];
 }
 
+# Write to a location in memory
 sub write_memory {
 	my ($address, $value) = @_;
 	unless ($address >= 0 && $address < $n_memory_words) {
@@ -85,69 +190,26 @@ sub write_memory {
 	$memory->[$address] = $value;
 }
 
-sub read_overflow {
-	return $O;
-}
-
-sub write_overflow {
-	my $value = shift;
-	
-	unless ($value >= 0 && $value < $word_size) {
-		die "Illegal overflow value: $value\n";
-	}
-
-	$O = $value;
-}
-
-sub read_stack_pointer {
-	return $SP;
-}
-
-sub write_stack_pointer {
-	my $value = shift;
-
-	unless ($value >= 0 && $value < $word_size) {
-		die "Illegal stack pointer value: $value\n";
-	}
-
-	$SP = $value;
-}
-
-sub read_program_counter {
-	return $PC;
-}
-
-sub write_program_counter {
-	my $value = shift;
-	
-	unless ($value >= 0 && $value < $word_size) {
-		die "Illegal program counter value: $value\n";
-	}
-
-	# Try to detect infinite loops (e.g., :crash SET PC, crash)
-	#die "HALT\n" if $PC == $value + 2;
-
-	$PC = $value;
-}
-
+# Load binary data from a file into RAM
 sub load_data {
 	my ($input_file_name, $memory_address) = @_;
 
 	open(my $in, '<:raw', $input_file_name);
 
-	while(my $word = read_word($in)) {
-		write_memory($memory_address, bin2dec($word));
+	while(my $word = DCPU::read_word($in)) {
+		write_memory($memory_address, DCPU::bin2dec($word));
 		$memory_address++;
 	}
 	
 	close $in;
 }
 
-# VM diagnostics
+# Dump the state of the VM to the terminal
 sub dump_machine_state {
 	dump_registers();
 	dump_memory();
 }
+
 sub dump_registers {
 	my $format = " %s: %04x";
 	for my $mnemonic (('A', 'B', 'C', 'X', 'Y', 'Z', 'I', 'J')) {
@@ -190,4 +252,5 @@ sub print_memory_location {
 		print "\n";
 	}
 }
+
 1;

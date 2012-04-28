@@ -1,4 +1,4 @@
-SET A, 0
-JSR 6
-SET B, 1
-SET C, 2		
+SET A, 1
+JSR 3
+SET B, 2
+SET C, 3		

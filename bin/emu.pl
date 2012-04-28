@@ -41,7 +41,7 @@ Monitor::set_parent_frame($top_frame);
 
 # Registers
 my %register_labels = ();
-my @registers = ( 'A', 'B', 'C', 'X', 'Y', 'Z', 'I', 'J', 'PC', 'SP', 'O');
+my @registers = ( 'A', 'B', 'C', 'X', 'Y', 'Z', 'I', 'J', 'PC', 'SP', 'EX', 'IA');
 render_registers();
 
 # Memory
@@ -178,7 +178,8 @@ sub get_register_value {
 	my $register = shift;
 	return VM::read_program_counter() if $register eq 'PC';
 	return VM::read_stack_pointer() if $register eq 'SP';
-	return VM::read_overflow() if $register eq 'O';
+	return VM::read_excess() if $register eq 'EX';
+	return VM::read_interupt_address() if $register eq 'IA';
 	return VM::read_register($register);
 }
 

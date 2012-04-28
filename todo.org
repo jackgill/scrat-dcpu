@@ -1,6 +1,9 @@
 * Notes
 ** Installing Tk
 cpan Tk
+** Special purpose registers
+Should they be directly addressable?
+Does the VM really need separate methods for them?
 * To Do
 ** DONE Assembler should output actual binary
 ** DONE Create a disassembler
@@ -48,11 +51,13 @@ should replace the label with the memory address of the target
 ** DONE pad monitor
 ** DONE place buttons
 ** DONE layout and bind registers
+** DONE disassembler should pretty-print expressions
 ** TODO test overflow behavior for operators that set overflow
 ** TODO test that overflow register can read by instructions
-** TODO disassembler should pretty-print expressions
 ** TODO assembler should accept -v flag
 ** TODO emulator needs to validate that the input is an object code file
+** TODO common namespace for modules
+** TODO rename DCPU module to Util
 * Scratch
 Goals: 
 - keyboard

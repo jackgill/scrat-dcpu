@@ -11,7 +11,7 @@ if (@ARGV != 1 || !($ARGV[0] =~ /(0x)?[0-9a-fA-F]{4}/)) {
 
 my $hex_string = $ARGV[0];
 my $bin_string = hex2bitstring($hex_string);
-my $assembly = disassemble_instruction($bin_string);
+my $assembly = disassemble_instruction(($bin_string));
 
 print "$assembly\n";
 
