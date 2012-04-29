@@ -1,3 +1,5 @@
+# DCPU-16 emulator. Provides implementations of all DCPU-16 opcodes.
+
 package Emulator;
 
 use strict;
@@ -13,7 +15,7 @@ use Monitor;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(execute_cycle get_current_instruction);
 
-my $debug = 0;
+my $debug = 1;
 
 # Define operators
 my %basic_operators = (
@@ -22,11 +24,11 @@ my %basic_operators = (
 	0x02 => \&ADD,
 	0x03 => \&SUB,
 	0x04 => \&MUL,
-	0x05 => \&not_implemented, # MLI
+	0x05 => \&MLI,
 	0x06 => \&DIV,
-	0x07 => \&not_implemented, # DVI
+	0x07 => \&DVI,
 	0x08 => \&MOD,
-	0x09 => \&not_implemented, # MDI
+	0x09 => \&MDI,
 	0x0a => \&AND,
 	0x0b => \&BOR,
 	0x0c => \&XOR,
@@ -258,7 +260,7 @@ sub write_value {
 		$right_value = DCPU::to_twos_complement($right_value);
 	}
 
-	if ($left_expression =~ /^\d+$/) { # literal
+	if ($left_expression =~ /^-?\d+$/) { # literal
 		# Spec says to silently ignore this but I'm a rebel
 		die "Error: write_value attempt to assign to a literal\n";
 	}
@@ -299,14 +301,14 @@ sub skip_next_instruction {
 
 # Operators
 
-# SET a, b - sets a to b
+# SET b, a - sets b to a
 sub SET {
 	my ($first_operand, $second_operand) = @_;
 	#print "SET($first_operand, $second_operand)\n";
 	write_value($first_operand, $second_operand);
 }
 
-# ADD a, b - sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
+# ADD b, a - sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
 sub ADD {
 	my ($first_operand, $second_operand) = @_;
 
@@ -325,7 +327,7 @@ sub ADD {
 	write_value($first_operand, $result);
 }
 
-# SUB a, b - sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
+# SUB b, a - sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
 sub SUB {
 	my ($first_operand, $second_operand) = @_;
 
@@ -344,7 +346,7 @@ sub SUB {
 	write_value($first_operand, $result);
 }
 
-# MUL a, b - sets a to a*b, sets O to ((a*b)>>16)&0xffff
+# MUL b, a - sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
 sub MUL {
 	my ($first_operand, $second_operand) = @_;
 
@@ -358,7 +360,21 @@ sub MUL {
 	write_value($first_operand, $result);
 }
 
-# DIV a, b - sets a to a/b, sets O to ((a<<16)/b)&0xffff. if b==0, sets a and O to 0 instead.
+# MLI b, a - like MUL, but treat b, a as signed
+sub MLI {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = DCPU::from_twos_complement(read_value($first_operand));
+	my $second_value = DCPU::from_twos_complement(read_value($second_operand));
+	
+	my $result = $first_value * $second_value;
+
+	write_excess( (($first_value * $second_value) >> 16) & 0xffff);
+	
+	write_value($first_operand, $result);
+}
+
+# DIV b, a - sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
 sub DIV {
 	my ($first_operand, $second_operand) = @_;
 
@@ -372,18 +388,54 @@ sub DIV {
 	write_value($first_operand, $result);
 }
 
-# MOD a, b - sets a to a%b. if b==0, sets a to 0 instead.
+# DVI b, a - like DIV, but treat b, a as signed. Rounds towards 0
+sub DVI {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = DCPU::from_twos_complement(read_value($first_operand));
+	my $second_value = DCPU::from_twos_complement(read_value($second_operand));
+	
+	my $result = int($first_value / $second_value);
+
+	write_excess( (($first_value << 16) / $second_value) & 0xffff);
+	
+	write_value($first_operand, $result);
+}
+
+# MOD b, a - sets b to b%a. if a==0, sets b to 0 instead.
 sub MOD {
 	my ($first_operand, $second_operand) = @_;
 
 	my $first_value = read_value($first_operand);
 	my $second_value = read_value($second_operand);
+
+	print "MOD($first_value, $second_value)\n" if $debug;
 	
 	if ($second_value == 0) {
 		write_value($first_operand, 0);
 	}
 	else {
 		my $result = $first_value % $second_value;
+		write_value($first_operand, $result);
+	}
+}
+
+# MDI b, a - like MOD, but treat b, a as signed. (MDI -7, 16 == -7)
+sub MDI {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = DCPU::from_twos_complement(read_value($first_operand));
+	my $second_value = DCPU::from_twos_complement(read_value($second_operand));
+
+	print "MDI($first_value, $second_value) = " if $debug;	
+	
+	if ($second_value == 0) {
+		write_value($first_operand, 0);
+		print "0\n" if $debug;
+	}
+	else {
+		my $result = $first_value % $second_value;
+		print "$result\n" if $debug;
 		write_value($first_operand, $result);
 	}
 }

@@ -16,6 +16,7 @@ get_special_opcode_mnemonic
 
 bin2dec
 to_twos_complement
+from_twos_complement
 
 disassemble_instruction
 
@@ -145,7 +146,13 @@ sub bin2dec {
 # Convert a number to the two's complement representation
 sub to_twos_complement {
 	my $value = shift;
-	return bin2dec(substr(sprintf("%.16b", $value), -16));
+	return bin2dec(substr(sprintf("%016b", $value), -16));
+}
+
+# Convert a number from the two's complement representation
+sub from_twos_complement {
+	my $value = shift;
+	return sprintf("%hd", $value);
 }
 
 # Given a sequence of words representing a single DCPU-16 instruction,

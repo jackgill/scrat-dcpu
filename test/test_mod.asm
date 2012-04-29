@@ -5,3 +5,7 @@ MOD A, B
 SET X, 0x000b
 SET Y, 0x0000
 MOD X, Y
+
+SET I, 0x000b
+SET J, 0x0002
+MOD I, J

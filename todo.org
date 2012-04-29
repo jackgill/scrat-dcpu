@@ -53,11 +53,12 @@ should replace the label with the memory address of the target
 ** DONE layout and bind registers
 ** DONE disassembler should pretty-print expressions
 ** TODO test overflow behavior for operators that set overflow
-** TODO test that overflow register can read by instructions
+** TODO test that overflow register can be read by instructions
 ** TODO assembler should accept -v flag
 ** TODO emulator needs to validate that the input is an object code file
 ** TODO common namespace for modules
 ** TODO rename DCPU module to Util
+** TODO make sure that I'm compliant w/ the spec on operand evaluation order
 * Scratch
 Goals: 
 - keyboard
@@ -85,3 +86,5 @@ Next:
   - signed conditionals
   - STI/STD
 - look at clock / cycle counting
+
+- need to implement "remainder" function for MOD/MDI

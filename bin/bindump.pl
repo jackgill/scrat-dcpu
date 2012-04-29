@@ -1,3 +1,6 @@
+# Given a binary file, prints a string representation of the contents to the terminal,
+# one 16 bit word per line.
+
 use strict;
 use warnings;
 use autodie;

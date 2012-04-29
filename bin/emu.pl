@@ -1,3 +1,7 @@
+# Emulator for the DCPU-16. Accepts a file containing object code, and renders a Tk-based GUI
+# which displays the contents of the registers, memory, and a monitor. Allows the user to
+# step through the program.
+
 use strict;
 use warnings;
 use lib 'lib';

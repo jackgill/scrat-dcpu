@@ -216,7 +216,7 @@ for my $tokens_ref (@instructions) {
 	for my $additional_word (@{ $additional_words }) {
 		$instruction_bit_length += 16;
 		$text_instruction .=  $additional_word;
-		push @hex_words, sprintf("%04x", DCPU::bin2dec($additional_word));
+		push @hex_words, substr(sprintf("%04x", DCPU::bin2dec($additional_word)), -4);
 	}
 	
 	my $binary_instruction = pack("B$instruction_bit_length", $text_instruction);
@@ -284,12 +284,12 @@ sub encode_literal {
 
 	if ($value =~ /^-?\s?0x[\da-fA-F]{1,4}$/) { # hex number
 		my $num = hex($value); # TODO: validate number size
-		my $bin = sprintf("%016b", $num);
+		my $bin = substr(sprintf("%016b", $num), -16);
 		#print "$bin\n";
 		return $bin;
 	}
 	elsif ($value =~ /^-?\s?\d+$/) { # dec number
-		return sprintf("%016b", $value);
+		return substr(sprintf("%016b", $value), -16);
 	}
 	die "Error: illegal literal: $value\n(on line $line_number)\n";
 }

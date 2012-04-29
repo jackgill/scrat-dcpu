@@ -1,0 +1,3 @@
+SET A, -1
+SET B, 2
+MLI A, B
