@@ -15,6 +15,7 @@ get_basic_opcode_mnemonic
 get_special_opcode_mnemonic
 
 bin2dec
+to_twos_complement
 
 disassemble_instruction
 
@@ -115,7 +116,7 @@ sub get_value_mnemonic {
 	}
 
 	# Must be a short-form literal
-	return sprintf('0x%04x', $value - 32);
+	return $value - 33;
 }
 
 # Get the mnemonic for a basic opcode
@@ -139,6 +140,12 @@ sub get_special_opcode_mnemonic {
 # Convert a bitstring to a decimial number
 sub bin2dec {
     return unpack("N", pack("B32", substr("0" x 32 . shift, -32)));
+}
+
+# Convert a number to the two's complement representation
+sub to_twos_complement {
+	my $value = shift;
+	return bin2dec(substr(sprintf("%.16b", $value), -16));
 }
 
 # Given a sequence of words representing a single DCPU-16 instruction,

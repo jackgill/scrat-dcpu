@@ -1,3 +1,6 @@
+# This script is a two-pass assembler, which reads a text file containing DCPU-16 assembly
+# and outputs a binary object code file.
+
 use strict;
 use warnings;
 use autodie;
@@ -103,7 +106,7 @@ my $line_number = 0;
 my $word_count = 0;
 my %labels = ();
 
-# Slurp assembly file
+# Read assembly file
 my @lines = ();
 my @instructions = ();
 while(my $line = <$in>) {
@@ -130,9 +133,9 @@ while(my $line = <$in>) {
 	\s+
 	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?) # first operand
 	\s*
-	(?:,
+	(?:,                                      # second operand (optional)
 	\s+
-	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?) # second operand (optional)
+	(\[? \s* -? \s? [\w\d]+ (?:\s*\+\s*\w)? \s* \]?) 
 	)?
 	$
 	/x) {
@@ -236,24 +239,24 @@ sub encode_value {
 	my ($value, $additional_words_ref) = @_;
 	print "encode_value($value)\n" if $debug;
 	
-	if ($value =~ /^(0x[\da-fA-F]{4})|(\d+)$/) { # Literal
+	if ($value =~ /^-?\s?(?:(0x[\da-fA-F]{4})|(\d+))$/) { # Literal
 		# convert hex to dec if necessary
 		$value = hex($value) if $value =~ /^0x/;
 		
-		if ($value < 0x20) { # short form value
-			return $value + 0x20;
+		if ($value > -2 && $value < 0x1f) { # short form value
+			return $value + 0x21;
 		}
 		else { # long form value
 			push @{ $additional_words_ref }, encode_literal($value);
 			return $values{'next word'};
 		}
 	}
-	elsif ($value =~ /\[\s*(0x[\da-fA-F]{4})\s*\]/) { # [literal]
+	elsif ($value =~ /\[\s*-?\s?(0x[\da-fA-F]{4})\s*\]/) { # [literal]
 		#print "[literal]\n";
 		push @{ $additional_words_ref }, encode_literal($1);
 		return $values{'[next word]'};
 	}
-	elsif ($value =~ /\[\s*(0x\d{4})\s*\+\s*(\w)\s*\]/) { # [literal + register]
+	elsif ($value =~ /\[\s*-?\s?(0x\d{4})\s*\+\s*(\w)\s*\]/) { # [literal + register]
 		#print "[literal + register]\n";
 		my $literal = $1;
 		my $register = $2;
@@ -279,13 +282,13 @@ sub encode_value {
 sub encode_literal {
 	my $value = shift;
 
-	if ($value =~ /^0x[\da-fA-F]{1,4}$/) { # hex number
+	if ($value =~ /^-?\s?0x[\da-fA-F]{1,4}$/) { # hex number
 		my $num = hex($value); # TODO: validate number size
 		my $bin = sprintf("%016b", $num);
 		#print "$bin\n";
 		return $bin;
 	}
-	elsif ($value =~ /^\d+$/) { # dec number
+	elsif ($value =~ /^-?\s?\d+$/) { # dec number
 		return sprintf("%016b", $value);
 	}
 	die "Error: illegal literal: $value\n(on line $line_number)\n";
@@ -301,7 +304,7 @@ sub get_value_length {
 		# convert hex to dec if necessary
 		$value = hex($value) if $value =~ /^0x/;
 		
-		if ($value < 0x20) { # short form value
+		if ($value > -2 && $value < 0x1f) { # short form value
 			return 0;
 		}
 		else { # long form value

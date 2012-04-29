@@ -68,12 +68,20 @@ Goals:
 
 TODO:
 - what about a way to dynamically assemble & load new instructions? A REPL for DCPU-16
-- bind ESC to quit
 - some kind of edge effect with canvas
 - play/stop/reset
 - clean up fit/finish
 - highlight PC and SP
+- config file to define attached hardware?
 
 Next:
 - new spec
 - implement monitor w/ interupts
+
+- encoding of short-form literals is off by one (allow short-form encoding of -1)
+- start implementing new opcodes
+  - signed math
+  - signed bitshift
+  - signed conditionals
+  - STI/STD
+- look at clock / cycle counting

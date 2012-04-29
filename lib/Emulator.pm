@@ -199,7 +199,7 @@ sub resolve_operand {
 		return $address;
 	}
 	elsif ($value >= 0x20 && $value < 0x40) { # short form literal
-		return $value - 0x20;
+		return $value - 0x21;
 	}
 	die "Unable to resolve operand $value\n";
 }
@@ -226,7 +226,7 @@ sub get_special_operator {
 # read the value represented by an arbitrary expression
 sub read_value {
 	my $expression = shift;
-	if ($expression =~ /^\d+$/) { # literal
+	if ($expression =~ /^-?\d+$/) { # literal
 		return $expression;
 	}
 	elsif ($expression =~ /\[(\d+)\]/) { # Memory
@@ -252,6 +252,11 @@ sub read_value {
 sub write_value {
 	my ($left_expression, $right_expression) = @_;
 	my $right_value = read_value($right_expression);
+
+	# Handle negative values
+	if ($right_value < 0) {
+		$right_value = DCPU::to_twos_complement($right_value);
+	}
 
 	if ($left_expression =~ /^\d+$/) { # literal
 		# Spec says to silently ignore this but I'm a rebel

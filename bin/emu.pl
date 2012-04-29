@@ -31,6 +31,10 @@ $mw->title('scrat-dcpu');
 my $icon = $mw->Photo(-file => 'data/scrat_icon.gif');
 $mw->Icon(-image => $icon);
 
+# Bind key events
+$mw->bind('<Key-Escape>', sub { exit });
+$mw->bind('<Key-space>', \&step);
+
 # Top frame
 my $top_frame = $mw->Frame(
 	-background => 'gray'
@@ -66,6 +70,18 @@ render_buttons();
 
 MainLoop();
 
+sub step {
+	eval {
+		Emulator::execute_cycle();
+	};
+	if ($@) {
+		$message_label->configure(
+			-text => $@
+			);
+	}
+	update_gui();
+}
+		  
 sub render_buttons {
 	my $frame = $mw->Frame(
 		-background => 'gray'
@@ -74,17 +90,7 @@ sub render_buttons {
 	# Step button
 	$frame->Button(
 		-text => 'Step',
-		-command => sub {
-			eval {
-				Emulator::execute_cycle();
-			};
-			if ($@) {
-				$message_label->configure(
-					-text => $@
-					);
-			}
-			update_gui();
-		}
+		-command => \&step
 		)->pack(
 		-padx => 10,
 		-pady => 10,
