@@ -421,6 +421,9 @@ sub MOD {
 }
 
 # MDI b, a - like MOD, but treat b, a as signed. (MDI -7, 16 == -7)
+# Note that Notch seems to have defined MDI as a remainder, not a proper modulo:
+# http://www.reddit.com/r/dcpu16/comments/stf82/rfe_dcpu16_v15/c4guida
+# http://www.reddit.com/r/dcpu16/comments/sxz66/i_have_an_issue_with_the_mdi_instruction/
 sub MDI {
 	my ($first_operand, $second_operand) = @_;
 
@@ -434,7 +437,15 @@ sub MDI {
 		print "0\n" if $debug;
 	}
 	else {
-		my $result = $first_value % $second_value;
+		my $result;
+		if ($first_value < 0) {
+			$first_value *= -1;
+			$result = $first_value % $second_value;
+			$result *= -1;
+		}
+		else {
+			$result = $first_value % $second_value;
+		}
 		print "$result\n" if $debug;
 		write_value($first_operand, $result);
 	}

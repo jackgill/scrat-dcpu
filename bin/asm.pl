@@ -110,19 +110,25 @@ my %labels = ();
 my @lines = ();
 my @instructions = ();
 while(my $line = <$in>) {
+	# Increment line number
+	$line_number++;
+
 	# Strip newline
 	chomp $line;
 
 	# Discard comments
 	$line = (split /;/, $line)[0];
 
+	# Skip empty lines
+	next unless $line;
+	
 	# Strip leading and trailing whitespace
 	$line =~ s/^\s*//;
 	$line =~ s/\s*$//;
 
-	# Skip empty lines
+	# Skip lines w/ only whitespace
 	next unless $line;
-	
+
 	# Check syntax
 	# TODO: check for unbalanced brackets
 	# note that second operand is optional
@@ -167,9 +173,6 @@ while(my $line = <$in>) {
 	
 	push @instructions, [$mnemonic, $first_operand, $second_operand];
 	push @lines, $line;
-
-	# Increment line number
-	$line_number++;
 }
 close($in);
 
