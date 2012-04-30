@@ -36,7 +36,7 @@ my %basic_operators = (
 	0x0e => \&ASR,
 	0x0f => \&SHL,
 	0x10 => \&IFB,
-	0x11 => \&not_implemented, # IFC
+	0x11 => \&IFC,
 	0x12 => \&IFE,
 	0x13 => \&IFN,
 	0x14 => \&IFG,
@@ -540,6 +540,30 @@ sub SHL {
 	write_value($first_operand, $result);
 }
 
+# IFB b, a - performs next instruction only if (b&a)!=0
+sub IFB {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	unless (($first_value & $second_value) != 0) {
+		skip_next_instruction();
+	}
+}
+
+# IFC b, a - performs next instruction only if (b&a)==0
+sub IFC {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	unless (($first_value & $second_value) == 0) {
+		skip_next_instruction();
+	}
+}
+
 # IFE a, b - performs next instruction only if a==b
 sub IFE {
 	my ($first_operand, $second_operand) = @_;
@@ -572,18 +596,6 @@ sub IFG {
 	my $second_value = read_value($second_operand);
 
 	unless ($first_value > $second_value) {
-		skip_next_instruction();
-	}
-}
-
-# IFB a, b - performs next instruction only if (a&b)!=0
-sub IFB {
-	my ($first_operand, $second_operand) = @_;
-
-	my $first_value = read_value($first_operand);
-	my $second_value = read_value($second_operand);
-
-	unless (($first_value & $second_value) != 0) {
 		skip_next_instruction();
 	}
 }
