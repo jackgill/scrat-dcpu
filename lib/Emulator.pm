@@ -40,7 +40,7 @@ my %basic_operators = (
 	0x12 => \&IFE,
 	0x13 => \&IFN,
 	0x14 => \&IFG,
-	0x15 => \&not_implemented, # IFA
+	0x15 => \&IFA,
 	0x16 => \&not_implemented, # IFL
 	0x17 => \&not_implemented, # IFU
 	0x1a => \&not_implemented, # ADX
@@ -564,7 +564,7 @@ sub IFC {
 	}
 }
 
-# IFE a, b - performs next instruction only if a==b
+# IFE b, a - performs next instruction only if b==a
 sub IFE {
 	my ($first_operand, $second_operand) = @_;
 
@@ -576,7 +576,7 @@ sub IFE {
 	}
 }
 
-# IFN a, b - performs next instruction only if a!=b
+# IFN b, a - performs next instruction only if b!=a
 sub IFN {
 	my ($first_operand, $second_operand) = @_;
 
@@ -588,12 +588,24 @@ sub IFN {
 	}
 }
 
-# IFG a, b - performs next instruction only if a>b
+# IFG b, a - performs next instruction only if b>a
 sub IFG {
 	my ($first_operand, $second_operand) = @_;
 
 	my $first_value = read_value($first_operand);
 	my $second_value = read_value($second_operand);
+
+	unless ($first_value > $second_value) {
+		skip_next_instruction();
+	}
+}
+
+# IFA b, a - performs next instruction only if b>a (signed)
+sub IFA {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = DCPU::from_twos_complement(read_value($first_operand));
+	my $second_value = DCPU::from_twos_complement(read_value($second_operand));
 
 	unless ($first_value > $second_value) {
 		skip_next_instruction();

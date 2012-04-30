@@ -1,0 +1,6 @@
+SET A, -1
+IFA A, -2
+SET B, 0x0002
+IFA A, 0
+SET C, 0x0004
+SET X, 0x0005
