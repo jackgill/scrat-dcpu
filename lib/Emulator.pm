@@ -41,7 +41,7 @@ my %basic_operators = (
 	0x13 => \&IFN,
 	0x14 => \&IFG,
 	0x15 => \&IFA,
-	0x16 => \&not_implemented, # IFL
+	0x16 => \&IFL,
 	0x17 => \&not_implemented, # IFU
 	0x1a => \&not_implemented, # ADX
 	0x1b => \&not_implemented, # SBX
@@ -608,6 +608,20 @@ sub IFA {
 	my $second_value = DCPU::from_twos_complement(read_value($second_operand));
 
 	unless ($first_value > $second_value) {
+		skip_next_instruction();
+	}
+}
+
+# IFL b, a - performs next instruction only if b<a
+sub IFL {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	print "IFL($first_value, $second_value)" if $debug;
+	
+	unless ($first_value < $second_value) {
 		skip_next_instruction();
 	}
 }
