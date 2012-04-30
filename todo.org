@@ -4,6 +4,8 @@ cpan Tk
 ** Special purpose registers
 Should they be directly addressable?
 Does the VM really need separate methods for them?
+* Icebox
+** TODO assembler should detect syntax error for "negative hexadecimal" numbers, e.g. -0x04
 * To Do
 ** DONE Assembler should output actual binary
 ** DONE Create a disassembler
@@ -87,4 +89,4 @@ Next:
   - STI/STD
 - look at clock / cycle counting
 
-- need to implement "remainder" function for MOD/MDI
+- figure out signed vs unsigned shifting behavior

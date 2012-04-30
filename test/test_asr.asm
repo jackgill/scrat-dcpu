@@ -1,0 +1,7 @@
+SET A, 0x0004
+SET B, 0x0001
+ASR A, B
+
+SET A, -4
+SET B, 0x0001
+ASR A, B		

@@ -33,7 +33,7 @@ my %basic_operators = (
 	0x0b => \&BOR,
 	0x0c => \&XOR,
 	0x0d => \&SHR,
-	0x0e => \&not_implemented, # ASR
+	0x0e => \&ASR,
 	0x0f => \&SHL,
 	0x10 => \&IFB,
 	0x11 => \&not_implemented, # IFC
@@ -451,21 +451,45 @@ sub MDI {
 	}
 }
 
-# SHL a, b - sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
-sub SHL {
+# AND b, a - sets b to b&a
+sub AND {
 	my ($first_operand, $second_operand) = @_;
 
 	my $first_value = read_value($first_operand);
 	my $second_value = read_value($second_operand);
 	
-	my $result = $first_value << $second_value;
-
-	write_excess( (($first_value << $second_value) >> 16) & 0xffff);
+	my $result = $first_value & $second_value;
 	
 	write_value($first_operand, $result);
 }
 
-# SHR a, b - sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
+# BOR b, a - sets b to b|a
+sub BOR {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value | $second_value;
+	
+	write_value($first_operand, $result);
+}
+
+# XOR b, a - sets b to b^a
+sub XOR {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	
+	my $result = $first_value ^ $second_value;
+	
+	write_value($first_operand, $result);
+}
+
+# SHR b, a - sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff (logical shift)
+# Note that in Java, >>> is an unsigned right shift operator, while >> is a signed right shift.
+# In Perl, >> is an unsigned right shift. I think.
 sub SHR {
 	my ($first_operand, $second_operand) = @_;
 
@@ -479,38 +503,39 @@ sub SHR {
 	write_value($first_operand, $result);
 }
 
-# AND a, b - sets a to a&b
-sub AND {
+# ASR b, a - sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
+# See note on SHR.
+sub ASR {
 	my ($first_operand, $second_operand) = @_;
 
-	my $first_value = read_value($first_operand);
+	my $first_value = DCPU::from_twos_complement(read_value($first_operand));
 	my $second_value = read_value($second_operand);
+	my $result;
 	
-	my $result = $first_value & $second_value;
+	print "ASR($first_value, $second_value) = " if $debug;
+
+	{
+		use integer;
+		$result = $first_value >> $second_value;
+	}
+	
+	print "$result\n" if $debug;
+
+	write_excess( (($first_value << 16) >> $second_value) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
 
-# BOR a, b - sets a to a|b
-sub BOR {
+# SHL b, a - sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
+sub SHL {
 	my ($first_operand, $second_operand) = @_;
 
 	my $first_value = read_value($first_operand);
 	my $second_value = read_value($second_operand);
 	
-	my $result = $first_value | $second_value;
-	
-	write_value($first_operand, $result);
-}
+	my $result = $first_value << $second_value;
 
-# XOR a, b - sets a to a^b
-sub XOR {
-	my ($first_operand, $second_operand) = @_;
-
-	my $first_value = read_value($first_operand);
-	my $second_value = read_value($second_operand);
-	
-	my $result = $first_value ^ $second_value;
+	write_excess( (($first_value << $second_value) >> 16) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
