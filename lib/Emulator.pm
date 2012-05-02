@@ -45,7 +45,7 @@ my %basic_operators = (
 	0x17 => \&IFU,
 	0x1a => \&ADX,
 	0x1b => \&SBX,
-	0x1e => \&not_implemented, # STI
+	0x1e => \&STI,
 	0x1f => \&not_implemented, # STD
 	);
 
@@ -304,7 +304,9 @@ sub skip_next_instruction {
 # SET b, a - sets b to a
 sub SET {
 	my ($first_operand, $second_operand) = @_;
-	#print "SET($first_operand, $second_operand)\n";
+
+	print "SET($first_operand, $second_operand)\n" if $debug;
+
 	write_value($first_operand, $second_operand);
 }
 
@@ -676,6 +678,18 @@ sub SBX {
 	}
 	
 	write_value($first_operand, $result);
+}
+
+# STI b, a - sets b to a, then increases I and J by 1
+sub STI {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	write_value($first_operand, $second_operand);
+	write_value('I', VM::read_register('I') + 1);
+	write_value('J', VM::read_register('J') + 1);
 }
 
 # JSR a - pushes the address of the next instruction to the stack, then sets PC to a
