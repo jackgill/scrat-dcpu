@@ -44,7 +44,7 @@ my %basic_operators = (
 	0x16 => \&IFL,
 	0x17 => \&IFU,
 	0x1a => \&ADX,
-	0x1b => \&not_implemented, # SBX
+	0x1b => \&SBX,
 	0x1e => \&not_implemented, # STI
 	0x1f => \&not_implemented, # STD
 	);
@@ -656,6 +656,26 @@ sub ADX {
 	}
 	
 	write_value($first_operand, $result);	
+}
+
+# SBX b, a - sets b to b-a+EX, sets EX to 0xFFFF if there is an underflow, 0x0 otherwise
+sub SBX {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+	my $excess = VM::read_excess();
+	
+	my $result = $first_value - $second_value + $excess;
+	
+	if ($result < 0) {
+		write_excess(0xffff);
+	}
+	else {
+		write_excess(0x0000);
+	}
+	
+	write_value($first_operand, $result);
 }
 
 # JSR a - pushes the address of the next instruction to the stack, then sets PC to a
