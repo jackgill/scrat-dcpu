@@ -46,7 +46,7 @@ my %basic_operators = (
 	0x1a => \&ADX,
 	0x1b => \&SBX,
 	0x1e => \&STI,
-	0x1f => \&not_implemented, # STD
+	0x1f => \&STD,
 	);
 
 my %special_operators = (
@@ -690,6 +690,18 @@ sub STI {
 	write_value($first_operand, $second_operand);
 	write_value('I', VM::read_register('I') + 1);
 	write_value('J', VM::read_register('J') + 1);
+}
+
+# STD b, a - sets b to a, then decreases I and J by 1
+sub STD {
+	my ($first_operand, $second_operand) = @_;
+
+	my $first_value = read_value($first_operand);
+	my $second_value = read_value($second_operand);
+
+	write_value($first_operand, $second_operand);
+	write_value('I', VM::read_register('I') - 1);
+	write_value('J', VM::read_register('J') - 1);
 }
 
 # JSR a - pushes the address of the next instruction to the stack, then sets PC to a
