@@ -42,6 +42,8 @@ load_data
 dump_machine_state
 );
 
+my $debug = 1;
+
 # Variables containing VM state:
 
 # General purpose registers
@@ -90,7 +92,8 @@ sub write_register {
 		die "Error: unknown register: $mnemonic\n";		
 	}
 	unless ($value >= 0 && $value < $word_size) {
-		die "Illegal register value: $value\n";
+		print "Wrapping register value: $value\n" if $debug;
+		write_register($mnemonic, $value - $word_size);
 	}
 	$registers{$mnemonic} = $value;
 }

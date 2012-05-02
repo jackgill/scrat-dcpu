@@ -61,6 +61,7 @@ should replace the label with the memory address of the target
 ** TODO common namespace for modules
 ** TODO rename DCPU module to Util
 ** TODO make sure that I'm compliant w/ the spec on operand evaluation order
+** TODO verify wrapping behavior of write_register
 * Scratch
 Goals: 
 - keyboard
@@ -89,4 +90,4 @@ Next:
   - STI/STD
 - look at clock / cycle counting
 
-- figure out signed vs unsigned shifting behavior
+
