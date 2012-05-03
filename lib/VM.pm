@@ -31,11 +31,16 @@ write_stack_pointer
 read_excess
 write_excess
 
-read_interupt_address
-write_interupt_address
+read_interrupt_address
+write_interrupt_address
 
 read_memory
 write_memory
+
+enque_interrupt
+dequeue_interupt
+set_interrupt_queueing
+get_interupt_queueing
 
 load_data
 
@@ -74,6 +79,12 @@ for (my $i = 0; $i < $n_memory_words; $i++) {
 	$memory->[$i] = 0;
 }
 
+# Interrupt queue
+my @interrupt_queue = ();
+
+# Interrupt queueing
+my $interrupt_queueing = 0;
+
 # Methods for manipulating VM state
 
 # Read a general purpose register
@@ -91,10 +102,9 @@ sub write_register {
 	unless (exists($registers{$mnemonic})) {
 		die "Error: unknown register: $mnemonic\n";		
 	}
-	unless ($value >= 0 && $value < $word_size) {
-		print "Wrapping register value: $value\n" if $debug;
-		write_register($mnemonic, $value - $word_size);
-	}
+	
+	$value = wrap($value);
+	
 	$registers{$mnemonic} = $value;
 }
 
@@ -125,11 +135,9 @@ sub read_stack_pointer {
 # Write to the stack pointer
 sub write_stack_pointer {
 	my $value = shift;
-
-	unless ($value >= 0 && $value < $word_size) {
-		die "Illegal stack pointer value: $value\n";
-	}
-
+	
+	$value = wrap($value);
+	
 	$SP = $value;
 }
 
@@ -150,12 +158,12 @@ sub write_excess {
 }
 
 # Read the interupt address
-sub read_interupt_address {
+sub read_interrupt_address {
 	return $IA;
 }
 
 # Write to the interupt address
-sub write_interupt_address {
+sub write_interrupt_address {
 	my $value = shift;
 	
 	unless ($value >= 0 && $value < $word_size) {
@@ -177,12 +185,8 @@ sub read_memory {
 # Write to a location in memory
 sub write_memory {
 	my ($address, $value) = @_;
-	unless ($address >= 0 && $address < $n_memory_words) {
-		die "Illegal memory address: $address\n";
-	}
-	unless ($value >= 0 && $value < $word_size) {
-		die "Illegal memory value: $value\n";
-	}
+
+	$value = wrap($value);
 
 	# Video RAM
 	if ($address >= 0x8000 && $address < 0x8180) {
@@ -191,6 +195,23 @@ sub write_memory {
 		}
 	}
 	$memory->[$address] = $value;
+}
+
+sub enqueue_interrupt {
+	my ($address, $message) = @_;
+	push @interrupt_queue, { address => $address, message => $message};
+}
+
+sub dequeue_interrupt {
+	return shift @interrupt_queue;
+}
+
+sub get_interrupt_queueing {
+	return $interrupt_queueing;
+}
+
+sub set_interrupt_queueing {
+	$interrupt_queueing = shift;
 }
 
 # Load binary data from a file into RAM
@@ -256,4 +277,16 @@ sub print_memory_location {
 	}
 }
 
+sub wrap {
+	my $value = shift;
+	if ($value > $word_size) {
+		print "Overflowing value: $value\n" if $debug;
+		return wrap($value - $word_size);
+	}
+	if ($value < 0) {
+		print "Underflowing value: $value\n" if $debug;
+		return wrap($value + $word_size);
+	}
+	return $value;
+}
 1;

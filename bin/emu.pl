@@ -189,7 +189,7 @@ sub get_register_value {
 	return VM::read_program_counter() if $register eq 'PC';
 	return VM::read_stack_pointer() if $register eq 'SP';
 	return VM::read_excess() if $register eq 'EX';
-	return VM::read_interupt_address() if $register eq 'IA';
+	return VM::read_interrupt_address() if $register eq 'IA';
 	return VM::read_register($register);
 }
 

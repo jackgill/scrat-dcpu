@@ -51,7 +51,7 @@ my %basic_operators = (
 
 my %special_operators = (
 	0x01 => \&JSR,
-	0x08 => \&not_implemented, # INT
+	0x08 => \&INT,
 	0x09 => \&not_implemented, # IAG
 	0x0a => \&not_implemented, # IAS
 	0x0b => \&not_implemented, # RFI
@@ -113,6 +113,13 @@ sub execute_cycle {
 		
 		# Invoke operator
 		&$operator_ref($first_operand, $second_operand);
+	}
+
+	# Check for queued interrupts
+	unless (VM::get_interrupt_queueing()) {
+		if (my $interrupt = VM::dequeue_interrupt()) {
+			trigger_interrupt($interrupt);
+		}
 	}
 	
 	# Dump machine state
@@ -297,6 +304,32 @@ sub skip_next_instruction {
 	if (should_read_next_word($second_value)) {
 		write_program_counter(read_program_counter() + 1);
 	}
+}
+
+sub push_stack {
+	my $value = shift;
+	my $stack_pointer = read_stack_pointer();
+	my $new_stack_pointer = $stack_pointer - 1;
+	write_stack_pointer($new_stack_pointer);
+	write_memory($new_stack_pointer);
+}
+
+sub pop_stack {
+	my $stack_pointer = read_stack_pointer();
+	my $new_stack_pointer = $stack_pointer + 1;
+	write_stack_pointer($new_stack_pointer);
+	return read_memory($stack_pointer);
+}
+
+# Expects a hashref w/ field 'address' and 'message'
+sub trigger_interrupt {
+	my $interrupt = shift;
+
+	VM::set_interrupt_queueing(1);
+	push_stack(VM::read_program_counter());
+	push_stack(VM::read_register('A'));
+	VM::set_program_counter($interrupt->{address});
+	VM::write_register('A', $interrupt->{message});
 }
 
 # Operators
@@ -708,12 +741,15 @@ sub STD {
 sub JSR {
 	my $value = shift;
 
-	my $sp = read_stack_pointer();
-	my $new_sp = $sp - 1;
-	$new_sp += 0x10000 if ($new_sp < 0); # wrap stack pointer
-	write_stack_pointer($new_sp);
-	write_memory($new_sp, read_program_counter());
+	push_stack(read_program_counter());
+	
 	write_program_counter($value);
+}
+
+# INT a - triggers a software interrupt with message a
+sub INT {
+	my $message = shift;
+	trigger_interrupt({ address => VM::read_interrupt_address, message => $message});
 }
 
 sub not_implemented {

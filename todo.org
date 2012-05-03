@@ -62,6 +62,7 @@ should replace the label with the memory address of the target
 ** TODO rename DCPU module to Util
 ** TODO make sure that I'm compliant w/ the spec on operand evaluation order
 ** TODO verify wrapping behavior of write_register
+** TODO need a proper test harness
 * Scratch
 Goals: 
 - keyboard
@@ -81,13 +82,9 @@ TODO:
 Next:
 - new spec
 - implement monitor w/ interupts
-
-- encoding of short-form literals is off by one (allow short-form encoding of -1)
-- start implementing new opcodes
-  - signed math
-  - signed bitshift
-  - signed conditionals
-  - STI/STD
 - look at clock / cycle counting
 
-
+Next up:
+- interrupts!
+- need to add interrupt queue to VM
+- after each clock cycle, check the interrupt queue. if there are any interrupts in the queue, dequeue one and start executing it.
