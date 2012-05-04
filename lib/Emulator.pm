@@ -56,7 +56,7 @@ my %special_operators = (
 	0x0a => \&IAS,
 	0x0b => \&RFI,
 	0x0c => \&IAQ,
-	0x10 => \&not_implemented, # HWN
+	0x10 => \&HWN,
 	0x11 => \&not_implemented, # HWQ
 	0x12 => \&not_implemented, # HWI
 	);
@@ -799,6 +799,13 @@ sub IAQ {
 	else {
 		VM::set_interrupt_queueing(0);
 	}
+}
+
+# HWN a - sets a to number of connected hardware devices
+sub HWN {
+	my $operand = shift;
+
+	write_value($operand, VM::get_n_hardware_devices());
 }
 
 sub not_implemented {

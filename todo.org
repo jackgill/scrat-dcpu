@@ -59,7 +59,7 @@ should replace the label with the memory address of the target
 ** TODO assembler should accept -v flag
 ** TODO emulator needs to validate that the input is an object code file
 ** TODO common namespace for modules
-** TODO rename DCPU module to Util
+** TODO rename DCPU module to Util, and VM to DCPU
 ** TODO make sure that I'm compliant w/ the spec on operand evaluation order
 ** TODO verify wrapping behavior of write_register
 ** TODO need a proper test harness
@@ -91,3 +91,6 @@ Next up:
 
 interupts can't really have a memory address...hardware wouldn't necessarily know anything about where the interrupt handler lives.
 this kind of implies that the program (OS?) should install an interrupt-dispatcher in IA, which read messages and invoke subroutines as appropriate. this also implies that interrupt messages will be globally unique, which is scary.
+
+- hardware support
+  - delivering interrupts between devices

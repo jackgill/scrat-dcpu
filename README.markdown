@@ -22,8 +22,7 @@ There's also a disassembler:
 	
 # Limitations:
 
-* No interrupts
-* None of the 1.7 special opcodes have been implemented yet
-* GUI is still rather primitive
+* Monitor doesn't support color, or blinking
+* GUI is still rather primitive, only supports stepping through code
 * No keyboard input
 * Emulator does not simulate clock

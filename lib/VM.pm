@@ -42,6 +42,9 @@ dequeue_interupt
 set_interrupt_queueing
 get_interupt_queueing
 
+register_hardware_device
+get_n_hardware_devices
+
 load_data
 
 dump_machine_state
@@ -84,6 +87,9 @@ my @interrupt_queue = ();
 
 # Interrupt queueing
 my $interrupt_queueing = 0;
+
+# Registered hardware devices
+my @hardware_devices = ();
 
 # Methods for manipulating VM state
 
@@ -221,6 +227,15 @@ sub get_interrupt_queueing {
 
 sub set_interrupt_queueing {
 	$interrupt_queueing = shift;
+}
+
+sub register_hardware_device {
+	my $ref = shift;
+	push @hardware_devices, $ref;
+}
+
+sub get_n_hardware_devices {
+	return scalar @hardware_devices;
 }
 
 # Load binary data from a file into RAM
