@@ -15,7 +15,7 @@ use Monitor;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(execute_cycle get_current_instruction);
 
-my $debug = 1;
+my $debug = 0;
 
 # Define operators
 my %basic_operators = (
@@ -52,10 +52,10 @@ my %basic_operators = (
 my %special_operators = (
 	0x01 => \&JSR,
 	0x08 => \&INT,
-	0x09 => \&not_implemented, # IAG
-	0x0a => \&not_implemented, # IAS
-	0x0b => \&not_implemented, # RFI
-	0x0c => \&not_implemented, # IAQ
+	0x09 => \&IAG,
+	0x0a => \&IAS,
+	0x0b => \&RFI,
+	0x0c => \&IAQ,
 	0x10 => \&not_implemented, # HWN
 	0x11 => \&not_implemented, # HWQ
 	0x12 => \&not_implemented, # HWI
@@ -117,8 +117,8 @@ sub execute_cycle {
 
 	# Check for queued interrupts
 	unless (VM::get_interrupt_queueing()) {
-		if (my $interrupt = VM::dequeue_interrupt()) {
-			trigger_interrupt($interrupt);
+		if (defined(my $message = VM::dequeue_interrupt())) {
+			trigger_interrupt($message);
 		}
 	}
 	
@@ -308,10 +308,13 @@ sub skip_next_instruction {
 
 sub push_stack {
 	my $value = shift;
+
+	print "push_stack($value)\n" if $debug;
+	
 	my $stack_pointer = read_stack_pointer();
 	my $new_stack_pointer = $stack_pointer - 1;
 	write_stack_pointer($new_stack_pointer);
-	write_memory($new_stack_pointer);
+	write_memory($new_stack_pointer, $value);
 }
 
 sub pop_stack {
@@ -321,15 +324,23 @@ sub pop_stack {
 	return read_memory($stack_pointer);
 }
 
-# Expects a hashref w/ field 'address' and 'message'
 sub trigger_interrupt {
-	my $interrupt = shift;
+	my $message = shift;
 
+	# Turn on interrupt queueing
 	VM::set_interrupt_queueing(1);
+
+	# Push program counter to the stack
 	push_stack(VM::read_program_counter());
+
+	# Push register A to the stack
 	push_stack(VM::read_register('A'));
-	VM::set_program_counter($interrupt->{address});
-	VM::write_register('A', $interrupt->{message});
+
+	# Set program counter to interrupt address
+	VM::write_program_counter(VM::read_interrupt_address());
+
+	# Set register A to the interrupt message
+	VM::write_register('A', $message);
 }
 
 # Operators
@@ -739,8 +750,10 @@ sub STD {
 
 # JSR a - pushes the address of the next instruction to the stack, then sets PC to a
 sub JSR {
-	my $value = shift;
+	my $operand = shift;
 
+	my $value = read_value($operand);
+	
 	push_stack(read_program_counter());
 	
 	write_program_counter($value);
@@ -749,7 +762,43 @@ sub JSR {
 # INT a - triggers a software interrupt with message a
 sub INT {
 	my $message = shift;
-	trigger_interrupt({ address => VM::read_interrupt_address, message => $message});
+	trigger_interrupt($message);
+}
+
+# IAG a - sets a to IA
+sub IAG {
+	my $operand = shift;
+
+	write_value($operand, VM::read_interrupt_address());
+}
+
+# IAS a - sets IA to a
+sub IAS {
+	my $operand = shift;
+
+	my $value = read_value($operand);
+
+	VM::write_interrupt_address($value);
+}
+
+# RFI a - disables interrupt queueing, pops A from the stack, then pops PC from the stack
+sub RFI {
+	VM::set_interrupt_queueing(0);
+	VM::write_register('A', pop_stack());
+	VM::write_program_counter(pop_stack());
+}
+
+# IAQ a - if a is nonzero, interrupts will be added to the queue instead of triggered. if a is zero, interrupts will be triggered as normal again
+sub IAQ {
+	my $operand = shift;
+
+	my $value = read_value($operand);
+	if ($value) {
+		VM::set_interrupt_queueing(1);
+	}
+	else {
+		VM::set_interrupt_queueing(0);
+	}
 }
 
 sub not_implemented {

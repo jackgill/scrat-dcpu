@@ -259,7 +259,7 @@ sub encode_value {
 		push @{ $additional_words_ref }, encode_literal($1);
 		return $values{'[next word]'};
 	}
-	elsif ($value =~ /\[\s*-?\s?(0x\d{4})\s*\+\s*(\w)\s*\]/) { # [literal + register]
+	elsif ($value =~ /\[\s*-?\s?(0x[\da-fA-F]{4})\s*\+\s*(\w)\s*\]/) { # [literal + register]
 		#print "[literal + register]\n";
 		my $literal = $1;
 		my $register = $2;

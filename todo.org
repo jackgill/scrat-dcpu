@@ -63,6 +63,8 @@ should replace the label with the memory address of the target
 ** TODO make sure that I'm compliant w/ the spec on operand evaluation order
 ** TODO verify wrapping behavior of write_register
 ** TODO need a proper test harness
+** TODO assembler needs to support labels on their own lines
+** TODO fix test_set.asm
 * Scratch
 Goals: 
 - keyboard
@@ -85,6 +87,7 @@ Next:
 - look at clock / cycle counting
 
 Next up:
-- interrupts!
-- need to add interrupt queue to VM
-- after each clock cycle, check the interrupt queue. if there are any interrupts in the queue, dequeue one and start executing it.
+- test interrupt queue
+
+interupts can't really have a memory address...hardware wouldn't necessarily know anything about where the interrupt handler lives.
+this kind of implies that the program (OS?) should install an interrupt-dispatcher in IA, which read messages and invoke subroutines as appropriate. this also implies that interrupt messages will be globally unique, which is scary.

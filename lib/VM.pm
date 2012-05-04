@@ -47,7 +47,7 @@ load_data
 dump_machine_state
 );
 
-my $debug = 1;
+my $debug = 0;
 
 # Variables containing VM state:
 
@@ -99,6 +99,9 @@ sub read_register {
 # Write to a general purpose register
 sub write_register {
 	my ($mnemonic, $value) = @_;
+
+	print "write_register($mnemonic, $value)\n" if $debug;
+	
 	unless (exists($registers{$mnemonic})) {
 		die "Error: unknown register: $mnemonic\n";		
 	}
@@ -135,8 +138,12 @@ sub read_stack_pointer {
 # Write to the stack pointer
 sub write_stack_pointer {
 	my $value = shift;
+
+	print "write_stack_pointer($value)\n" if $debug;
 	
 	$value = wrap($value);
+
+	print "wrapped: write_stack_pointer($value)\n" if $debug;
 	
 	$SP = $value;
 }
@@ -186,6 +193,8 @@ sub read_memory {
 sub write_memory {
 	my ($address, $value) = @_;
 
+	print "write_memory($address, $value)\n" if $debug;
+
 	$value = wrap($value);
 
 	# Video RAM
@@ -198,8 +207,8 @@ sub write_memory {
 }
 
 sub enqueue_interrupt {
-	my ($address, $message) = @_;
-	push @interrupt_queue, { address => $address, message => $message};
+	my ($message) = @_;
+	push @interrupt_queue, $message;
 }
 
 sub dequeue_interrupt {
@@ -279,14 +288,21 @@ sub print_memory_location {
 
 sub wrap {
 	my $value = shift;
+
+	#die "wrapping undefined value" unless defined $value;
+	
+	#print "wrap($value)\n" if $debug;
+	
 	if ($value > $word_size) {
-		print "Overflowing value: $value\n" if $debug;
-		return wrap($value - $word_size);
+		#print "Overflowing value: $value\n" if $debug;
+		$value =  wrap($value - $word_size);
 	}
 	if ($value < 0) {
-		print "Underflowing value: $value\n" if $debug;
-		return wrap($value + $word_size);
+		#print "Underflowing value: $value\n" if $debug;
+		$value = wrap($value + $word_size);
 	}
+
+	#print "returning $value\n";
 	return $value;
 }
 1;
