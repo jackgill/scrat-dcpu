@@ -4,8 +4,26 @@ cpan Tk
 ** Special purpose registers
 Should they be directly addressable?
 Does the VM really need separate methods for them?
+** BIOS design
+The DCPU-16 isn't really set up to support operating systems. in particular, there's no notion of a "privileged mode" for the processor. Any concept of an OS basically starts with the interrupt handler, and any user program can override it, so there's no way for an OS to make any guarantees about what's going to happen. It would however be possible for a considerate user program to store the original IA in memory, install its own handler for dealing w/ special hardware, which would then call the original handler. 
+
+If I freeze the hardware to keyboard, monitor, and clock, then the outlines of a BIOS form:
+1) Disable keyboard monitor interrupts.
+2) Set the clock to tick 30 times a second.
+3) Every time the clock ticks, poll the keyboard for input, copy it to a memory buffer, and paint the monitor.
+
+The emulator would start by setting PC to the memory address for the BIOS. The BIOS would install its interrupt handler, then start executing code from a fixed point in memory (likely 0x0000). User code would need to avoid using interrupts (or else call the BIOS interrupt handler as described above), and avoid writing to the region of memory reserved by the BIOS. It probably makes sense for the BIOS to reserve the high end of memory, meaning there's a maximum length to the stack, then video RAM (by default, the default font and palette of the monitor are used), then the BIOS interrupt handler. 
+
+Basically, the BIOS is implemented in terms of interrupts, and exposes the same memory-mapped IO model we had early to user code. To user code, the interface is simple: your program is loaded at 0x0000, the keyboard buffer is at Xy, the video RAM starts at Y, don't write to memory above Z or the BIOS will break.
+
+User code can opt out of the BIOS by setting IA to 0, but it is then responsible for managing all hardware devices.  This could see this being useful for games.
 * Icebox
+** TODO look at limiting cycle rate to 100 KHz, per spec
+** TODO Compare code w/ other assemblers/emulators
+** TODO test assembler/emulator interop with other distributions
 ** TODO assembler should detect syntax error for "negative hexadecimal" numbers, e.g. -0x04
+** TODO what about a way to dynamically assemble & load new instructions? A REPL for DCPU-16
+** TODO config file to define attached hardware?
 * To Do
 ** DONE Assembler should output actual binary
 ** DONE Create a disassembler
@@ -54,37 +72,31 @@ should replace the label with the memory address of the target
 ** DONE place buttons
 ** DONE layout and bind registers
 ** DONE disassembler should pretty-print expressions
-** TODO test overflow behavior for operators that set overflow
-** TODO test that overflow register can be read by instructions
-** TODO assembler should accept -v flag
+** TODO play/stop/reset
 ** TODO emulator needs to validate that the input is an object code file
 ** TODO common namespace for modules
 ** TODO rename DCPU module to Util, and VM to DCPU
 ** TODO make sure that I'm compliant w/ the spec on operand evaluation order
-** TODO verify wrapping behavior of write_register
-** TODO need a proper test harness
-** TODO assembler needs to support labels on their own lines
-** TODO fix test_set.asm
-* Scratch
-Goals: 
-- keyboard
-- clock / interupts
-- Find and run some programs from the internet
-- Compare code w/ other assemblers/emulators
-- test assembler/emulator interop with other distributions
+** Assembler
+*** TODO assembler needs to support labels on their own lines
+*** TODO assembler should accept -v flag
+** Testing
+*** TODO need a proper test harness
+*** TODO test excess behavior for operators that set excess
+*** TODO test that excess register can be read by instructions
 
-TODO:
-- what about a way to dynamically assemble & load new instructions? A REPL for DCPU-16
-- some kind of edge effect with canvas
-- play/stop/reset
-- clean up fit/finish
-- highlight PC and SP
-- config file to define attached hardware?
+*** TODO test interrupt queue
+*** TODO fix test_set.asm
+*** TODO verify wrapping behavior of write_register
+** GUI 
+*** TODO fix bug: some kind of edge effect with canvas
+*** TODO highlight PC and SP
+*** TODO more flexible display for memory
+* Scratch
 
 Next:
-- Implement HWQ
-- finish monitor implementation (default font, default palette, blink)
-- look at clock / cycle counting
-- test interrupt queue
-- test harness?
-- BIOS to initialize monitor and keyboard, install interrupt handler, load user program?
+- Flesh out hardware devices:
+  - finish monitor emulator (default font, default palette, blink)
+  - implement keyboard emulator
+  - implement clock emulator
+- Implement BIOS to simplify writing programs that use the hardware and keyboard.

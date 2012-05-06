@@ -1,8 +1,6 @@
 # Overview
 
-This project provides an assembler, disassembler, and emulator for Notch's DCPU-16. I am currently in the process of moving from version 1.1 to version 1.7 of Notch's spec.
-
-This is my learning project for DCPU programming. It's named scrat-DCPU since I'm about as good at writing assemblers and emulators as Scrat is at protecting his acorn.
+This project provides an assembler, disassembler, and emulator for Notch's DCPU-16. I aim for compliance with version 1.7 of Notch's spec. It's named scrat-DCPU since I'm about as good at writing assemblers and emulators as Scrat is at protecting his acorn :)
 
 # Getting started
 
@@ -23,6 +21,7 @@ There's also a disassembler:
 # Limitations:
 
 * Monitor doesn't support color, or blinking
-* GUI is still rather primitive, only supports stepping through code
-* No keyboard input
-* Emulator does not simulate clock
+* No keyboard
+* No clock
+* Only supports stepping through code
+* Emulator does not limit processor cycle rate
