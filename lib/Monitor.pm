@@ -111,4 +111,16 @@ sub draw_pixel {
 	$self->{canvas}->createRectangle($x, $y, $x + $self->{pixel_size}, $y + $self->{pixel_size}, -fill => 'black');
 }
 
+sub get_id {
+	return 0x7349f615;
+}
+
+sub get_version {
+	return 0x1802;
+}
+
+sub get_manufacturer_id {
+	return 0x1c6c8b36;
+}
+
 1;

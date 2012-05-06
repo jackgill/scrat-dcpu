@@ -57,7 +57,7 @@ my %special_operators = (
 	0x0b => \&RFI,
 	0x0c => \&IAQ,
 	0x10 => \&HWN,
-	0x11 => \&not_implemented, # HWQ
+	0x11 => \&HWQ,
 	0x12 => \&HWI,
 	);
 
@@ -816,6 +816,28 @@ sub HWN {
 	print "HWN($operand)\n" if $debug;
 	
 	write_value($operand, $dcpu->get_n_hardware_devices());
+}
+
+# HWQ a - sets A, B, C, X, Y registers to information about hardware a
+#         A+(B<<16) is a 32 bit word identifying the hardware id
+#         C is the hardware version
+#         X+(Y<<16) is a 32 bit word identifying the manufacturer
+sub HWQ {
+	my $operand = shift;
+	
+	my $value = read_value($operand);
+
+	my $hardware_device = $dcpu->get_hardware_device($value);
+
+	my $hardware_id = $hardware_device->get_id();
+	my $hardware_version = $hardware_device->get_version();
+	my $manufacturer_id = $hardware_device->get_manufacturer_id();
+
+	$dcpu->write_register('A', $hardware_id & 0xffff);
+	$dcpu->write_register('B', $hardware_id >> 16);
+	$dcpu->write_register('C', $hardware_version);
+	$dcpu->write_register('X', $manufacturer_id & 0xffff);
+	$dcpu->write_register('Y', $manufacturer_id >> 16);
 }
 
 # HWI a - sends an interrupt to hardware a
