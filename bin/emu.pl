@@ -16,14 +16,19 @@ if (@ARGV != 1) {
 	die "Usage: $0 file.asm";
 }
 
+# Create new DCPU instance
+my $dcpu = VM->new();
+
+Emulator::set_dcpu($dcpu);
+
 # Load object code into memory
-VM::load_data($ARGV[0], 0);
+$dcpu->load_data($ARGV[0], 0);
 
 # Load font into memory
 # TODO: allow font file to be specified as command-line argument
-VM::load_data('data/font.bin', 0x8180);
+$dcpu->load_data('data/font.bin', 0x8180);
 
-#VM::dump_machine_state();
+#$dcpue->dump_machine_state();
 
 # Set up GUI
 
@@ -45,7 +50,8 @@ my $top_frame = $mw->Frame(
 	);
 
 # Monitor
-Monitor::set_parent_frame($top_frame);
+my $monitor = Monitor->new($dcpu, $top_frame);
+$dcpu->register_hardware_device($monitor);
 
 # Registers
 my %register_labels = ();
@@ -168,7 +174,7 @@ sub render_memory_bank {
 				);
 		}
 		 my $label = $frame->Label(
-			-text => sprintf("%04x", VM::read_memory($memory_address)),
+			-text => sprintf("%04x", $dcpu->read_memory($memory_address)),
 			-width => 8
 			)->pack(
 			 -side => 'left',
@@ -186,11 +192,11 @@ sub render_memory_bank {
 
 sub get_register_value {
 	my $register = shift;
-	return VM::read_program_counter() if $register eq 'PC';
-	return VM::read_stack_pointer() if $register eq 'SP';
-	return VM::read_excess() if $register eq 'EX';
-	return VM::read_interrupt_address() if $register eq 'IA';
-	return VM::read_register($register);
+	return $dcpu->read_program_counter() if $register eq 'PC';
+	return $dcpu->read_stack_pointer() if $register eq 'SP';
+	return $dcpu->read_excess() if $register eq 'EX';
+	return $dcpu->read_interrupt_address() if $register eq 'IA';
+	return $dcpu->read_register($register);
 }
 
 sub update_gui {
@@ -212,7 +218,7 @@ sub update_register_labels {
 sub update_memory_labels {
 	for my $memory_address (keys %memory_labels) {
 		$memory_labels{$memory_address}->configure(
-			-text => sprintf("%04x", VM::read_memory($memory_address))
+			-text => sprintf("%04x", $dcpu->read_memory($memory_address))
 			);
 	}
 }

@@ -15,7 +15,7 @@ use Monitor;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(execute_cycle get_current_instruction);
 
-my $debug = 0;
+my $debug = 1;
 
 # Define operators
 my %basic_operators = (
@@ -58,7 +58,7 @@ my %special_operators = (
 	0x0c => \&IAQ,
 	0x10 => \&HWN,
 	0x11 => \&not_implemented, # HWQ
-	0x12 => \&not_implemented, # HWI
+	0x12 => \&HWI,
 	);
 
 my $current_instruction;
@@ -67,12 +67,18 @@ sub get_current_instruction {
 	return $current_instruction;
 }
 
+my $dcpu;
+
+sub set_dcpu {
+	$dcpu = shift;
+}
+
 sub execute_cycle {
 	# Read a word from memory
-	my $word = VM::read_memory(read_program_counter());
+	my $word = $dcpu->read_memory($dcpu->read_program_counter());
 
 	# Increment program counter
-	VM::write_program_counter(read_program_counter() + 1);
+	$dcpu->write_program_counter($dcpu->read_program_counter() + 1);
 	
 	# Convert instruction to binary
 	my $instruction = sprintf("%016b", $word);
@@ -116,14 +122,14 @@ sub execute_cycle {
 	}
 
 	# Check for queued interrupts
-	unless (VM::get_interrupt_queueing()) {
-		if (defined(my $message = VM::dequeue_interrupt())) {
+	unless ($dcpu->get_interrupt_queueing()) {
+		if (defined(my $message = $dcpu->dequeue_interrupt())) {
 			trigger_interrupt($message);
 		}
 	}
 	
 	# Dump machine state
-	#VM::dump_machine_state();
+	#$dcpu->dump_machine_state();
 }
 
 
@@ -173,7 +179,7 @@ sub resolve_operand {
 		return "[$new_value]";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
-		my $next_word = read_memory(read_program_counter());
+		my $next_word = $dcpu->read_memory(read_program_counter());
 		write_program_counter(read_program_counter() + 1);
 		
 		my $address = $next_word;
@@ -192,7 +198,7 @@ sub resolve_operand {
 		return "[$address + $register]";
 	}
 	elsif ($value == 0x1f) { # next word (literal)
-		my $next_word = read_memory(read_program_counter());
+		my $next_word = $dcpu->read_memory(read_program_counter());
 		write_program_counter(read_program_counter() + 1);
 		
 		my $literal = $next_word;
@@ -200,7 +206,7 @@ sub resolve_operand {
 		return $literal;
 	}
 	elsif ($value == 0x1e) { # [next word] (memory location)
-		my $next_word = read_memory(read_program_counter());
+		my $next_word = $dcpu->read_memory(read_program_counter());
 		write_program_counter(read_program_counter() + 1);
 		
 		my $address = "[$next_word]";
@@ -239,17 +245,17 @@ sub read_value {
 		return $expression;
 	}
 	elsif ($expression =~ /\[(\d+)\]/) { # Memory
-		return read_memory($1);
+		return $dcpu->read_memory($1);
 	}
 	# TODO: need to sort out difference between A and [A] as lvalues and rvalues
 	elsif ($expression =~ /^(\w)$/) { # Register
-		return read_register($1);
+		return $dcpu->read_register($1);
 	}
 	elsif ($expression =~ /\[(\w)\]/) { # [Register]
-		return read_register($1);
+		return $dcpu->read_register($1);
 	}
 	elsif ($expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
-		return read_memory($1 + read_register($2));
+		return $dcpu->read_memory($1 + $dcpu->read_register($2));
 	}
 	elsif ($expression eq 'PC') { # Program counter
 		return read_program_counter();
@@ -272,16 +278,16 @@ sub write_value {
 		die "Error: write_value attempt to assign to a literal\n";
 	}
 	elsif ($left_expression =~ /^\w$/) { # Register
-		write_register($left_expression, $right_value);
+		$dcpu->write_register($left_expression, $right_value);
 	}
 	elsif ($left_expression =~ /\[(\d+)\]/) { # Memory
-		write_memory($1, $right_value);
+		$dcpu->write_memory($1, $right_value);
 	}
 	elsif ($left_expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
-		write_memory($1 + read_register($2), $right_value);
+		$dcpu->write_memory($1 + $dcpu->read_register($2), $right_value);
 	}
 	elsif ($left_expression eq 'PC') { # Program counter
-		write_program_counter($right_value);
+		$dcpu->write_program_counter($right_value);
 	}
 	else {
 		die "Error: write_value unrecognized expression: $left_expression\n";
@@ -289,8 +295,8 @@ sub write_value {
 }
 
 sub skip_next_instruction {
-	my $next_word = read_memory(read_program_counter());
-	write_program_counter(read_program_counter() + 1);
+	my $next_word = $dcpu->read_memory(read_program_counter());
+	$dcpu->write_program_counter(read_program_counter() + 1);
 	
 	my $next_bitstring = sprintf("%016b", $next_word);
 	$next_bitstring =~ /([01]{6})([01]{6})([01]{4})/;
@@ -299,10 +305,10 @@ sub skip_next_instruction {
 	my $second_value = bin2dec($2);
 
 	if (should_read_next_word($first_value)) {
-		write_program_counter(read_program_counter() + 1);
+		$dcpu->write_program_counter(read_program_counter() + 1);
 	}
 	if (should_read_next_word($second_value)) {
-		write_program_counter(read_program_counter() + 1);
+		$dcpu->write_program_counter(read_program_counter() + 1);
 	}
 }
 
@@ -313,34 +319,34 @@ sub push_stack {
 	
 	my $stack_pointer = read_stack_pointer();
 	my $new_stack_pointer = $stack_pointer - 1;
-	write_stack_pointer($new_stack_pointer);
-	write_memory($new_stack_pointer, $value);
+	$dcpu->write_stack_pointer($new_stack_pointer);
+	$dcpu->write_memory($new_stack_pointer, $value);
 }
 
 sub pop_stack {
 	my $stack_pointer = read_stack_pointer();
 	my $new_stack_pointer = $stack_pointer + 1;
-	write_stack_pointer($new_stack_pointer);
-	return read_memory($stack_pointer);
+	$dcpu->write_stack_pointer($new_stack_pointer);
+	return $dcpu->read_memory($stack_pointer);
 }
 
 sub trigger_interrupt {
 	my $message = shift;
 
 	# Turn on interrupt queueing
-	VM::set_interrupt_queueing(1);
+	$dcpu->set_interrupt_queueing(1);
 
 	# Push program counter to the stack
-	push_stack(VM::read_program_counter());
+	push_stack($dcpu->read_program_counter());
 
 	# Push register A to the stack
-	push_stack(VM::read_register('A'));
+	push_stack($dcpu->read_register('A'));
 
 	# Set program counter to interrupt address
-	VM::write_program_counter(VM::read_interrupt_address());
+	$dcpu->write_program_counter($dcpu->read_interrupt_address());
 
 	# Set register A to the interrupt message
-	VM::write_register('A', $message);
+	$dcpu->write_register('A', $message);
 }
 
 # Operators
@@ -363,11 +369,11 @@ sub ADD {
 	
 	my $result = $first_value + $second_value;
 	
-	if ($result > $VM::word_size) {
-		write_excess(0x0001);
+	if ($result > $dcpu->{word_size}) {
+		$dcpu->write_excess(0x0001);
 	}
 	else {
-		write_excess(0x0000);
+		$dcpu->write_excess(0x0000);
 	}
 	
 	write_value($first_operand, $result);
@@ -383,10 +389,10 @@ sub SUB {
 	my $result = $first_value - $second_value;
 	
 	if ($result < 0) {
-		write_excess(0xffff);
+		$dcpu->write_excess(0xffff);
 	}
 	else {
-		write_excess(0x0000);
+		$dcpu->write_excess(0x0000);
 	}
 	
 	write_value($first_operand, $result);
@@ -401,7 +407,7 @@ sub MUL {
 	
 	my $result = $first_value * $second_value;
 
-	write_excess( (($first_value * $second_value) >> 16) & 0xffff);
+	$dcpu->write_excess( (($first_value * $second_value) >> 16) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -415,7 +421,7 @@ sub MLI {
 	
 	my $result = $first_value * $second_value;
 
-	write_excess( (($first_value * $second_value) >> 16) & 0xffff);
+	$dcpu->write_excess( (($first_value * $second_value) >> 16) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -429,7 +435,7 @@ sub DIV {
 	
 	my $result = int($first_value / $second_value);
 
-	write_excess( (($first_value << 16) / $second_value) & 0xffff);
+	$dcpu->write_excess( (($first_value << 16) / $second_value) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -443,7 +449,7 @@ sub DVI {
 	
 	my $result = int($first_value / $second_value);
 
-	write_excess( (($first_value << 16) / $second_value) & 0xffff);
+	$dcpu->write_excess( (($first_value << 16) / $second_value) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -544,7 +550,7 @@ sub SHR {
 	
 	my $result = $first_value >> $second_value;
 
-	write_excess( (($first_value << 16) >> $second_value) & 0xffff);
+	$dcpu->write_excess( (($first_value << 16) >> $second_value) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -567,7 +573,7 @@ sub ASR {
 	
 	print "$result\n" if $debug;
 
-	write_excess( (($first_value << 16) >> $second_value) & 0xffff);
+	$dcpu->write_excess( (($first_value << 16) >> $second_value) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -581,7 +587,7 @@ sub SHL {
 	
 	my $result = $first_value << $second_value;
 
-	write_excess( (($first_value << $second_value) >> 16) & 0xffff);
+	$dcpu->write_excess( (($first_value << $second_value) >> 16) & 0xffff);
 	
 	write_value($first_operand, $result);
 }
@@ -690,15 +696,15 @@ sub ADX {
 
 	my $first_value = read_value($first_operand);
 	my $second_value = read_value($second_operand);
-	my $excess = VM::read_excess();
+	my $excess = $dcpu->read_excess();
 	
 	my $result = $first_value + $second_value + $excess;
 	
-	if ($result > $VM::word_size) {
-		write_excess(0x0001);
+	if ($result > $$dcpu->{word_size}) {
+		$dcpu->write_excess(0x0001);
 	}
 	else {
-		write_excess(0x0000);
+		$dcpu->write_excess(0x0000);
 	}
 	
 	write_value($first_operand, $result);	
@@ -710,15 +716,15 @@ sub SBX {
 
 	my $first_value = read_value($first_operand);
 	my $second_value = read_value($second_operand);
-	my $excess = VM::read_excess();
+	my $excess = $dcpu->read_excess();
 	
 	my $result = $first_value - $second_value + $excess;
 	
 	if ($result < 0) {
-		write_excess(0xffff);
+		$dcpu->write_excess(0xffff);
 	}
 	else {
-		write_excess(0x0000);
+		$dcpu->write_excess(0x0000);
 	}
 	
 	write_value($first_operand, $result);
@@ -732,8 +738,8 @@ sub STI {
 	my $second_value = read_value($second_operand);
 
 	write_value($first_operand, $second_operand);
-	write_value('I', VM::read_register('I') + 1);
-	write_value('J', VM::read_register('J') + 1);
+	write_value('I', $dcpu->read_register('I') + 1);
+	write_value('J', $dcpu->read_register('J') + 1);
 }
 
 # STD b, a - sets b to a, then decreases I and J by 1
@@ -744,8 +750,8 @@ sub STD {
 	my $second_value = read_value($second_operand);
 
 	write_value($first_operand, $second_operand);
-	write_value('I', VM::read_register('I') - 1);
-	write_value('J', VM::read_register('J') - 1);
+	write_value('I', $dcpu->read_register('I') - 1);
+	write_value('J', $dcpu->read_register('J') - 1);
 }
 
 # JSR a - pushes the address of the next instruction to the stack, then sets PC to a
@@ -769,7 +775,7 @@ sub INT {
 sub IAG {
 	my $operand = shift;
 
-	write_value($operand, VM::read_interrupt_address());
+	write_value($operand, $dcpu->read_interrupt_address());
 }
 
 # IAS a - sets IA to a
@@ -778,14 +784,14 @@ sub IAS {
 
 	my $value = read_value($operand);
 
-	VM::write_interrupt_address($value);
+	$dcpu->write_interrupt_address($value);
 }
 
 # RFI a - disables interrupt queueing, pops A from the stack, then pops PC from the stack
 sub RFI {
-	VM::set_interrupt_queueing(0);
-	VM::write_register('A', pop_stack());
-	VM::write_program_counter(pop_stack());
+	$dcpu->set_interrupt_queueing(0);
+	$dcpu->write_register('A', pop_stack());
+	$dcpu->write_program_counter(pop_stack());
 }
 
 # IAQ a - if a is nonzero, interrupts will be added to the queue instead of triggered. if a is zero, interrupts will be triggered as normal again
@@ -794,10 +800,10 @@ sub IAQ {
 
 	my $value = read_value($operand);
 	if ($value) {
-		VM::set_interrupt_queueing(1);
+		$dcpu->set_interrupt_queueing(1);
 	}
 	else {
-		VM::set_interrupt_queueing(0);
+		$dcpu->set_interrupt_queueing(0);
 	}
 }
 
@@ -805,7 +811,20 @@ sub IAQ {
 sub HWN {
 	my $operand = shift;
 
-	write_value($operand, VM::get_n_hardware_devices());
+	print "HWN($operand)\n" if $debug;
+	
+	write_value($operand, $dcpu->get_n_hardware_devices());
+}
+
+# HWI a - sends an interrupt to hardware a
+sub HWI {
+	my $operand = shift;
+	
+	my $value = read_value($operand);
+	
+	my $hardware_device = $dcpu->get_hardware_device($value);
+	
+	$hardware_device->trigger_interrupt();
 }
 
 sub not_implemented {
