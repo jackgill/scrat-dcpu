@@ -15,7 +15,7 @@ use Monitor;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(execute_cycle get_current_instruction);
 
-my $debug = 1;
+my $debug = 0;
 
 # Define operators
 my %basic_operators = (
@@ -179,8 +179,8 @@ sub resolve_operand {
 		return "[$new_value]";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
-		my $next_word = $dcpu->read_memory(read_program_counter());
-		write_program_counter(read_program_counter() + 1);
+		my $next_word = $dcpu->read_memory($dcpu->read_program_counter());
+		$dcpu->write_program_counter($dcpu->read_program_counter() + 1);
 		
 		my $address = $next_word;
 		
@@ -198,16 +198,16 @@ sub resolve_operand {
 		return "[$address + $register]";
 	}
 	elsif ($value == 0x1f) { # next word (literal)
-		my $next_word = $dcpu->read_memory(read_program_counter());
-		write_program_counter(read_program_counter() + 1);
+		my $next_word = $dcpu->read_memory($dcpu->read_program_counter());
+		$dcpu->write_program_counter($dcpu->read_program_counter() + 1);
 		
 		my $literal = $next_word;
 		#print "resolved to literal $literal\n";
 		return $literal;
 	}
 	elsif ($value == 0x1e) { # [next word] (memory location)
-		my $next_word = $dcpu->read_memory(read_program_counter());
-		write_program_counter(read_program_counter() + 1);
+		my $next_word = $dcpu->read_memory($dcpu->read_program_counter());
+		$dcpu->write_program_counter($dcpu->read_program_counter() + 1);
 		
 		my $address = "[$next_word]";
 		#print "resolved to memory address $address\n";
@@ -258,7 +258,7 @@ sub read_value {
 		return $dcpu->read_memory($1 + $dcpu->read_register($2));
 	}
 	elsif ($expression eq 'PC') { # Program counter
-		return read_program_counter();
+		return $dcpu->read_program_counter();
 	}
 	die "Error: read_value unrecognized expression: $expression\n";
 }
@@ -295,8 +295,8 @@ sub write_value {
 }
 
 sub skip_next_instruction {
-	my $next_word = $dcpu->read_memory(read_program_counter());
-	$dcpu->write_program_counter(read_program_counter() + 1);
+	my $next_word = $dcpu->read_memory($dcpu->read_program_counter());
+	$dcpu->write_program_counter($dcpu->read_program_counter() + 1);
 	
 	my $next_bitstring = sprintf("%016b", $next_word);
 	$next_bitstring =~ /([01]{6})([01]{6})([01]{4})/;
@@ -305,10 +305,10 @@ sub skip_next_instruction {
 	my $second_value = bin2dec($2);
 
 	if (should_read_next_word($first_value)) {
-		$dcpu->write_program_counter(read_program_counter() + 1);
+		$dcpu->write_program_counter($dcpu->read_program_counter() + 1);
 	}
 	if (should_read_next_word($second_value)) {
-		$dcpu->write_program_counter(read_program_counter() + 1);
+		$dcpu->write_program_counter($dcpu->read_program_counter() + 1);
 	}
 }
 
@@ -760,14 +760,16 @@ sub JSR {
 
 	my $value = read_value($operand);
 	
-	push_stack(read_program_counter());
+	push_stack($dcpu->read_program_counter());
 	
-	write_program_counter($value);
+	$dcpu->write_program_counter($value);
 }
 
 # INT a - triggers a software interrupt with message a
 sub INT {
 	my $message = shift;
+
+	# TODO: should check to see if interrupts are enabled?
 	trigger_interrupt($message);
 }
 

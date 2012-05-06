@@ -82,18 +82,9 @@ TODO:
 - config file to define attached hardware?
 
 Next:
-- new spec
-- implement monitor w/ interupts
+- Implement HWQ
+- finish monitor implementation (default font, default palette, blink)
 - look at clock / cycle counting
-
-
-interupts can't really have a memory address...hardware wouldn't necessarily know anything about where the interrupt handler lives.
-this kind of implies that the program (OS?) should install an interrupt-dispatcher in IA, which read messages and invoke subroutines as appropriate. this also implies that interrupt messages will be globally unique, which is scary.
-
-- hardware support
-  - delivering interrupts between devices
-
-Next up:
-- time to move from modules to objects
-  - specifically, need objects for hardware (monitor, keyboard)
 - test interrupt queue
+- test harness?
+- BIOS to initialize monitor and keyboard, install interrupt handler, load user program?

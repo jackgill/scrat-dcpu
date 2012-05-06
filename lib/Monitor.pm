@@ -50,13 +50,13 @@ sub new {
 sub trigger_interrupt {
 	my ($self) = @_;
 
-	my $message = $self->dcpu->read_register('A');
+	my $message = $self->{dcpu}->read_register('A');
 	
 	if ($message == 0) {
-		my $start = $self->dcpu->read_register('B');
+		my $start = $self->{dcpu}->read_register('B');
 		my $end = $start + 386;
 		for (my $i = $start; $i < $end; $i++) {
-			$self->draw_character($i - $start, $self->dcpu->read_memory($i));
+			$self->draw_character($i - $start, $self->{dcpu}->read_memory($i));
 		}
 	}
 }
@@ -71,15 +71,16 @@ sub draw_character {
 
 	# Read font (note endianess)
 	# TODO: add default font
-	my $word2 = $self->dcpu->read_memory(0x8180 + (2 *$character));
-	my $word1 = $self->dcpu->read_memory(0x8181 + (2 *$character));
+	my $word2 = $self->{dcpu}->read_memory(0x8180 + (2 *$character));
+	my $word1 = $self->{dcpu}->read_memory(0x8181 + (2 *$character));
 
-	print "draw_character($character)\n" if $debug;
+	print "draw_character($index, $character)\n" if $debug;
 
-	# TODO: this will only draw to the first line
-	# Need to map index to x, y
-	my $x = $index * $self->character_width;
-	my $y = 0;
+	my $row = int($index / $self->{n_columns});
+	my $column = $index % $self->{n_columns};
+	
+	my $x = $column * $self->{character_width};
+	my $y = $row * $self->{character_height};
 	
 	$self->draw_glyph($x, $y, $word1, $word2);
 }
@@ -91,23 +92,23 @@ sub draw_glyph {
 	
 	my $string = sprintf("%016b%016b", $word1, $word2);
 	$string =~ /(\d{8})(\d{8})(\d{8})(\d{8})/;
-	draw_column($x, $y, $4);
-	draw_column($x + (1 * $self->pixel_size), $y, $3);
-	draw_column($x + (2 * $self->pixel_size), $y, $2);
-	draw_column($x + (3 * $self->pixel_size), $y, $1);
+	$self->draw_column($x, $y, $4);
+	$self->draw_column($x + (1 * $self->{pixel_size}), $y, $3);
+	$self->draw_column($x + (2 * $self->{pixel_size}), $y, $2);
+	$self->draw_column($x + (3 * $self->{pixel_size}), $y, $1);
 }
 
 sub draw_column {
 	my ($self, $x, $y, $column) = @_;
 	my @bits = reverse(split(//, $column));
 	for (my $i = 0; $i < @bits; $i++) {
-		draw_pixel($x, $y + ($i * $self->pixel_size)) if $bits[$i] eq '1';
+		$self->draw_pixel($x, $y + ($i * $self->{pixel_size})) if $bits[$i] eq '1';
 	}
 }
 
 sub draw_pixel {
 	my ($self, $x, $y) = @_;
-	$self->canvas->createRectangle($x, $y, $x + $self->pixel_size, $y + $self->pixel_size, -fill => 'black');
+	$self->{canvas}->createRectangle($x, $y, $x + $self->{pixel_size}, $y + $self->{pixel_size}, -fill => 'black');
 }
 
 1;
