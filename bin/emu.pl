@@ -11,6 +11,8 @@ use VM;
 use Monitor;
 use Tk;
 
+my $stop_requested = 1;
+
 # Parse command line arguments
 if (@ARGV != 1) {
 	die "Usage: $0 file.asm";
@@ -28,7 +30,7 @@ $dcpu->load_data($ARGV[0], 0);
 # TODO: allow font file to be specified as command-line argument
 $dcpu->load_data('data/font.bin', 0x8180);
 
-#$dcpue->dump_machine_state();
+#$dcpu->dump_machine_state();
 
 # Set up GUI
 
@@ -76,6 +78,10 @@ my $message_label = $top_frame->Label( -text => 'Message' )->pack(
 $top_frame->pack(
 	-side => 'top'
 	);
+
+my $step_button;
+my $play_button;
+my $stop_button;
 render_buttons();
 
 MainLoop();
@@ -91,16 +97,60 @@ sub step {
 	}
 	update_gui();
 }
-		  
+
+sub play_cycle {
+	if ($stop_requested == 0) {
+		step();
+		$top_frame->after(1, \&play_cycle);
+	}
+}
+
+sub play {
+	$stop_button->configure(-state => "normal");
+	$step_button->configure(-state => "disabled");
+	
+	$stop_requested = 0;
+	$top_frame->after(1, \&play_cycle);
+}
+
+sub stop {
+	$play_button->configure(-state => "normal");
+	$step_button->configure(-state => "normal");
+	$stop_button->configure(-state => "disabled");
+	
+	$stop_requested = 1;
+}
+
 sub render_buttons {
 	my $frame = $mw->Frame(
 		-background => 'gray'
 		);
 	
 	# Step button
-	$frame->Button(
+	$step_button = $frame->Button(
 		-text => 'Step',
 		-command => \&step
+		)->pack(
+		-padx => 10,
+		-pady => 10,
+		-side => 'left'
+		);
+
+	# Play button
+	$play_button = $frame->Button(
+		-text => 'Play',
+		-command => \&play
+		)->pack(
+		-padx => 10,
+		-pady => 10,
+		-side => 'left'
+		);
+	
+	# Stop button
+	$stop_button = $frame->Button(
+		-text => 'Stop',
+		-command => \&stop,
+		-state => "disabled"
 		)->pack(
 		-padx => 10,
 		-pady => 10,

@@ -24,6 +24,7 @@ User code can opt out of the BIOS by setting IA to 0, but it is then responsible
 ** TODO assembler should detect syntax error for "negative hexadecimal" numbers, e.g. -0x04
 ** TODO what about a way to dynamically assemble & load new instructions? A REPL for DCPU-16
 ** TODO config file to define attached hardware?
+** TODO reset button?
 * To Do
 ** DONE Assembler should output actual binary
 ** DONE Create a disassembler
@@ -72,7 +73,7 @@ should replace the label with the memory address of the target
 ** DONE place buttons
 ** DONE layout and bind registers
 ** DONE disassembler should pretty-print expressions
-** TODO play/stop/reset
+** DONE play/stop
 ** TODO emulator needs to validate that the input is an object code file
 ** TODO common namespace for modules
 ** TODO rename DCPU module to Util, and VM to DCPU
