@@ -146,7 +146,7 @@ sub resolve_operand {
 		return $mnemonic;
 	}
 	elsif($value == 0x18) { # POP
-		my $stack_pointer = read_stack_pointer();
+		my $stack_pointer = $dcpu->read_stack_pointer();
 
 		# increment stack pointer
 		my $new_value = $stack_pointer + 1;
@@ -158,15 +158,15 @@ sub resolve_operand {
 			$new_value = $wrapped_value;
 		}
 
-		write_stack_pointer($new_value);
+		$dcpu->write_stack_pointer($new_value);
 		return "[$stack_pointer]";
 	}
 	elsif($value == 0x19) { # PEEK
-		my $stack_pointer = read_stack_pointer();
+		my $stack_pointer = $dcpu->read_stack_pointer();
 		return "[$stack_pointer]";
 	}
 	elsif($value == 0x1a) { # PUSH
-		my $stack_pointer = read_stack_pointer();
+		my $stack_pointer = $dcpu->read_stack_pointer();
 		my $new_value = $stack_pointer - 1;
 		
 		# Apparently wrapping is called for by the spec
@@ -175,7 +175,7 @@ sub resolve_operand {
 			#print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
 			$new_value = $wrapped_value;
 		}
-		write_stack_pointer($new_value);
+		$dcpu->write_stack_pointer($new_value);
 		return "[$new_value]";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
@@ -317,14 +317,14 @@ sub push_stack {
 
 	print "push_stack($value)\n" if $debug;
 	
-	my $stack_pointer = read_stack_pointer();
+	my $stack_pointer = $dcpu->read_stack_pointer();
 	my $new_stack_pointer = $stack_pointer - 1;
 	$dcpu->write_stack_pointer($new_stack_pointer);
 	$dcpu->write_memory($new_stack_pointer, $value);
 }
 
 sub pop_stack {
-	my $stack_pointer = read_stack_pointer();
+	my $stack_pointer = $dcpu->read_stack_pointer();
 	my $new_stack_pointer = $stack_pointer + 1;
 	$dcpu->write_stack_pointer($new_stack_pointer);
 	return $dcpu->read_memory($stack_pointer);

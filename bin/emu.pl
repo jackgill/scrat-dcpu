@@ -9,6 +9,7 @@ use lib 'lib';
 use Emulator;
 use VM;
 use Monitor;
+use Keyboard;
 use Tk;
 
 my $stop_requested = 1;
@@ -43,8 +44,8 @@ my $icon = $mw->Photo(-file => 'data/scrat_icon.gif');
 $mw->Icon(-image => $icon);
 
 # Bind key events
-$mw->bind('<Key-Escape>', sub { exit });
-$mw->bind('<Key-space>', \&step);
+#$mw->bind('<Key-Escape>', sub { exit });
+#$mw->bind('<Key-space>', \&step);
 
 # Top frame
 my $top_frame = $mw->Frame(
@@ -54,6 +55,11 @@ my $top_frame = $mw->Frame(
 # Monitor
 my $monitor = Monitor->new($dcpu, $top_frame);
 $dcpu->register_hardware_device($monitor);
+
+# Keyboard
+my $keyboard = Keyboard->new($dcpu, $top_frame);
+$dcpu->register_hardware_device($keyboard);
+$mw->bind( '<KeyPress>' => \&key_press );
 
 # Registers
 my %register_labels = ();
@@ -203,10 +209,11 @@ sub render_registers {
 }
 
 sub render_memory {
-	render_memory_bank(0x0000);
-	render_memory_bank(0x0008);
-	render_memory_bank(0x8000);
-	render_memory_bank(0xfff8);
+	render_memory_bank(0x0000); # Program
+	render_memory_bank(0x0008); # More program
+	render_memory_bank(0x8000); # Video RAM
+	render_memory_bank(0x9000); # Keyboard buffer
+	render_memory_bank(0xfff8); # Stack
 }
 
 sub render_memory_bank {
@@ -271,4 +278,20 @@ sub update_memory_labels {
 			-text => sprintf("%04x", $dcpu->read_memory($memory_address))
 			);
 	}
+}
+
+sub key_press {
+	my($c) = @_;
+	my $e = $c->XEvent;
+	my( $x, $y, $W, $K, $A ) = ( $e->x, $e->y, $e->K, $e->W, $e->A );
+
+	# print "A key was pressed:\n";
+	# print "  x = $x\n";
+	# print "  y = $y\n";
+	# print "  W = $K\n";
+	# print "  K = $W\n";
+	# print "  A = $A\n";
+
+	$keyboard->handle_key_press($W);
+	
 }
