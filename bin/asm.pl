@@ -110,6 +110,8 @@ my %labels = ();
 my @lines = ();
 my @instructions = ();
 while(my $line = <$in>) {
+	print $line if $debug;
+	
 	# Increment line number
 	$line_number++;
 
@@ -134,15 +136,17 @@ while(my $line = <$in>) {
 	# note that second operand is optional
 	unless ($line =~ /
 	^
-	(?::(\w+)\s+)?                            # label (optional)
+	(?::(\w+)\s*)?                            # label (optional)
+	(?:                                       # begin instruction (optional)
 	(\w{3})                                   # operator
 	\s+
 	(\[? \s* [\w\d]+ (?:\s*\+\s*\w)? \s* \]?) # first operand
 	\s*
-	(?:,                                      # second operand (optional)
+	(?:,                                      # begin second operand (optional)
 	\s+
 	(\[? \s* -? \s? [\w\d]+ (?:\s*\+\s*\w)? \s* \]?) 
-	)?
+	)?                                        # end second operand
+    )?                                        # end instruction
 	$
 	/x) {
 		die "Syntax error on line $line_number:\n$line\n";
@@ -166,12 +170,12 @@ while(my $line = <$in>) {
 
 	$labels{$label} = $word_count if $label;
 
-	# Dupe'd w/ second pass
-	$word_count++;
-	$word_count += get_value_length($first_operand);
+	# Calculate word count of this line
+	$word_count++ if defined $mnemonic;
+	$word_count += get_value_length($first_operand) if defined $first_operand;
 	$word_count += get_value_length($second_operand) if defined $second_operand;
-	
-	push @instructions, [$mnemonic, $first_operand, $second_operand];
+
+	push @instructions, [$mnemonic, $first_operand, $second_operand] if defined $mnemonic;
 	push @lines, $line;
 }
 close($in);
