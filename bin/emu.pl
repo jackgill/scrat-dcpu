@@ -10,6 +10,7 @@ use Emulator;
 use VM;
 use Monitor;
 use Keyboard;
+use Clock;
 use Tk;
 
 my $stop_requested = 1;
@@ -57,9 +58,13 @@ my $monitor = Monitor->new($dcpu, $top_frame);
 $dcpu->register_hardware_device($monitor);
 
 # Keyboard
-my $keyboard = Keyboard->new($dcpu, $top_frame);
+my $keyboard = Keyboard->new($dcpu);
 $dcpu->register_hardware_device($keyboard);
 $mw->bind( '<KeyPress>' => \&key_press );
+
+# Clock
+my $clock = Clock->new($dcpu);
+$dcpu->register_hardware_device($clock);
 
 # Registers
 my %register_labels = ();
@@ -107,6 +112,7 @@ sub step {
 sub play_cycle {
 	if ($stop_requested == 0) {
 		step();
+		$clock->cycle();
 		$top_frame->after(1, \&play_cycle);
 	}
 }

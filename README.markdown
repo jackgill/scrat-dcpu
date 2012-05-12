@@ -21,6 +21,4 @@ There's also a disassembler:
 # Limitations:
 
 * Monitor doesn't support color, or blinking
-* No keyboard
-* No clock
 * Emulator does not accurately simulate processor cycle rate

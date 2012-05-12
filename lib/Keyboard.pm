@@ -5,15 +5,11 @@ package Keyboard;
 use strict;
 use warnings;
 
-use Tk;
-
 my $debug = 0;
 
 sub new {
 	my ($class, $dcpu, $parent_frame) = @_;
 
-	#$parent_frame->bind( '<Any-KeyPress>' => \&key_press );
-	
 	my $self = {
 		dcpu => $dcpu,
 		buffer => [],

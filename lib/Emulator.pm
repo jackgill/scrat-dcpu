@@ -312,43 +312,6 @@ sub skip_next_instruction {
 	}
 }
 
-sub push_stack {
-	my $value = shift;
-
-	print "push_stack($value)\n" if $debug;
-	
-	my $stack_pointer = $dcpu->read_stack_pointer();
-	my $new_stack_pointer = $stack_pointer - 1;
-	$dcpu->write_stack_pointer($new_stack_pointer);
-	$dcpu->write_memory($new_stack_pointer, $value);
-}
-
-sub pop_stack {
-	my $stack_pointer = $dcpu->read_stack_pointer();
-	my $new_stack_pointer = $stack_pointer + 1;
-	$dcpu->write_stack_pointer($new_stack_pointer);
-	return $dcpu->read_memory($stack_pointer);
-}
-
-sub trigger_interrupt {
-	my $message = shift;
-
-	# Turn on interrupt queueing
-	$dcpu->set_interrupt_queueing(1);
-
-	# Push program counter to the stack
-	push_stack($dcpu->read_program_counter());
-
-	# Push register A to the stack
-	push_stack($dcpu->read_register('A'));
-
-	# Set program counter to interrupt address
-	$dcpu->write_program_counter($dcpu->read_interrupt_address());
-
-	# Set register A to the interrupt message
-	$dcpu->write_register('A', $message);
-}
-
 # Operators
 
 # SET b, a - sets b to a
@@ -760,7 +723,7 @@ sub JSR {
 
 	my $value = read_value($operand);
 	
-	push_stack($dcpu->read_program_counter());
+	$dcpu->push_stack($dcpu->read_program_counter());
 	
 	$dcpu->write_program_counter($value);
 }
@@ -792,8 +755,8 @@ sub IAS {
 # RFI a - disables interrupt queueing, pops A from the stack, then pops PC from the stack
 sub RFI {
 	$dcpu->set_interrupt_queueing(0);
-	$dcpu->write_register('A', pop_stack());
-	$dcpu->write_program_counter(pop_stack());
+	$dcpu->write_register('A', $dcpu->pop_stack());
+	$dcpu->write_program_counter($dcpu->pop_stack());
 }
 
 # IAQ a - if a is nonzero, interrupts will be added to the queue instead of triggered. if a is zero, interrupts will be triggered as normal again

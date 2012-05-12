@@ -198,6 +198,48 @@ sub write_memory {
 	$self->{memory}->[$address] = $value;
 }
 
+sub trigger_interrupt {
+	my ($self, $message) = @_;
+
+	# Turn on interrupt queueing
+	$self->set_interrupt_queueing(1);
+
+	# Push program counter to the stack
+	$self->push_stack($self->read_program_counter());
+
+	# Push register A to the stack
+	$self->push_stack($self->read_register('A'));
+
+	# Set program counter to interrupt address
+	$self->write_program_counter($self->read_interrupt_address());
+
+	# Set register A to the interrupt message
+	$self->write_register('A', $message);
+}
+
+sub push_stack {
+	my ($self, $value) = @_;
+
+	print "push_stack($value)\n" if $debug;
+	
+	my $stack_pointer = $self->read_stack_pointer();
+	my $new_stack_pointer = $stack_pointer - 1;
+	
+	$self->write_stack_pointer($new_stack_pointer);
+	$self->write_memory($new_stack_pointer, $value);
+}
+
+sub pop_stack {
+	my ($self) = @_;
+	
+	my $stack_pointer = $self->read_stack_pointer();
+	my $new_stack_pointer = $stack_pointer + 1;
+	
+	$self->write_stack_pointer($new_stack_pointer);
+	
+	return $self->read_memory($stack_pointer);
+}
+
 # Add an interrupt to the interrupt queue
 sub enqueue_interrupt {
 	my ($self, $message) = @_;
