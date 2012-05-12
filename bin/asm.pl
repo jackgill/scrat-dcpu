@@ -110,8 +110,6 @@ my %labels = ();
 my @lines = ();
 my @instructions = ();
 while(my $line = <$in>) {
-	print $line if $debug;
-	
 	# Increment line number
 	$line_number++;
 
@@ -175,8 +173,10 @@ while(my $line = <$in>) {
 	$word_count += get_value_length($first_operand) if defined $first_operand;
 	$word_count += get_value_length($second_operand) if defined $second_operand;
 
-	push @instructions, [$mnemonic, $first_operand, $second_operand] if defined $mnemonic;
-	push @lines, $line;
+	if (defined $mnemonic) {
+		push @instructions, [$mnemonic, $first_operand, $second_operand] ;
+		push @lines, $line;
+	}
 }
 close($in);
 
