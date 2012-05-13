@@ -100,6 +100,7 @@ MainLoop();
 sub step {
 	eval {
 		Emulator::execute_cycle();
+		$clock->execute_cycle();
 	};
 	if ($@) {
 		$message_label->configure(
@@ -112,7 +113,6 @@ sub step {
 sub play_cycle {
 	if ($stop_requested == 0) {
 		step();
-		$clock->cycle();
 		$top_frame->after(1, \&play_cycle);
 	}
 }

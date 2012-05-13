@@ -94,7 +94,7 @@ sub execute_cycle {
 		my $operator_ref = get_special_operator($first_value);
 
 		# Resolve operand
-		my $operand = resolve_operand($second_value);
+		my $operand = resolve_operand($second_value, 1);
 
 		# Print instruction
 		my $operator_mnemonic = DCPU::get_special_opcode_mnemonic($first_value);
@@ -109,8 +109,8 @@ sub execute_cycle {
 		my $operator_ref = get_basic_operator($op_code);
 
 		# Resolve operands
-		my $first_operand = resolve_operand($first_value);
-		my $second_operand = resolve_operand($second_value);
+		my $first_operand = resolve_operand($first_value, 1);
+		my $second_operand = resolve_operand($second_value, 2);
 
 		# Print instruction
 		my $operator_mnemonic = DCPU::get_basic_opcode_mnemonic($op_code);
@@ -124,7 +124,7 @@ sub execute_cycle {
 	# Check for queued interrupts
 	unless ($dcpu->get_interrupt_queueing()) {
 		if (defined(my $message = $dcpu->dequeue_interrupt())) {
-			trigger_interrupt($message);
+			$dcpu->trigger_interrupt($message);
 		}
 	}
 	
@@ -135,7 +135,7 @@ sub execute_cycle {
 
 # build an expression for an operand
 sub resolve_operand {
-	my ($value) = @_;
+	my ($value, $position) = @_;
 
 	print "Resolve $value...\n" if $debug;
 	
@@ -145,38 +145,26 @@ sub resolve_operand {
 		#print "resolved to register $mnemonic\n";
 		return $mnemonic;
 	}
-	elsif($value == 0x18) { # POP
-		my $stack_pointer = $dcpu->read_stack_pointer();
+	elsif($value == 0x18) { # PUSH / POP
+		my $current_stack_pointer = $dcpu->read_stack_pointer();
 
-		# increment stack pointer
-		my $new_value = $stack_pointer + 1;
+		# calculate stack pointer
+		my $new_stack_pointer = $position == 1 ?
+			$current_stack_pointer - 1 : # PUSH
+			$current_stack_pointer + 1; # POP
 		
-		# Apparently wrapping is called for by the spec
-		if ($new_value >= 0x10000 ) {
-			my $wrapped_value = $new_value - 0x10000;
-			#print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
-			$new_value = $wrapped_value;
-		}
-
-		$dcpu->write_stack_pointer($new_value);
-		return "[$stack_pointer]";
+		$dcpu->write_stack_pointer($new_stack_pointer);
+		
+		return $position == 1 ?
+			"[$new_stack_pointer]" : # PUSH
+			"[$current_stack_pointer]"; # POP
 	}
 	elsif($value == 0x19) { # PEEK
 		my $stack_pointer = $dcpu->read_stack_pointer();
 		return "[$stack_pointer]";
 	}
-	elsif($value == 0x1a) { # PUSH
-		my $stack_pointer = $dcpu->read_stack_pointer();
-		my $new_value = $stack_pointer - 1;
-		
-		# Apparently wrapping is called for by the spec
-		if ($new_value < 0) {
-			my $wrapped_value = $new_value + 0x10000;
-			#print "Warning: wrapping stack pointer from $new_value to $wrapped_value\n";
-			$new_value = $wrapped_value;
-		}
-		$dcpu->write_stack_pointer($new_value);
-		return "[$new_value]";
+	elsif($value == 0x1a) { # PICK
+		die "PICK is not implemented\n";
 	}
 	elsif ($value >= 0x10 && $value <= 0x17) { # [next word + register]
 		my $next_word = $dcpu->read_memory($dcpu->read_program_counter());
@@ -280,7 +268,7 @@ sub write_value {
 	elsif ($left_expression =~ /^\w$/) { # Register
 		$dcpu->write_register($left_expression, $right_value);
 	}
-	elsif ($left_expression =~ /\[(\d+)\]/) { # Memory
+	elsif ($left_expression =~ /\[(-?\d+)\]/) { # Memory
 		$dcpu->write_memory($1, $right_value);
 	}
 	elsif ($left_expression =~ /\[(\d+) \+ (\w)\]/) { # [literal + register]
@@ -733,7 +721,7 @@ sub INT {
 	my $message = shift;
 
 	# TODO: should check to see if interrupts are enabled?
-	trigger_interrupt($message);
+	$dcpu->trigger_interrupt($message);
 }
 
 # IAG a - sets a to IA

@@ -201,20 +201,31 @@ sub write_memory {
 sub trigger_interrupt {
 	my ($self, $message) = @_;
 
-	# Turn on interrupt queueing
-	$self->set_interrupt_queueing(1);
+	print "DCPU received interrupt\n" if $debug;
 
-	# Push program counter to the stack
-	$self->push_stack($self->read_program_counter());
+	my $IA = $self->read_interrupt_address();
+	
+	if ($IA) {
+		if ($self->get_interrupt_queueing()) {
+			$self->enqueue_interrupt($message);
+		}
+		else {
+			# Turn on interrupt queueing
+			$self->set_interrupt_queueing(1);
 
-	# Push register A to the stack
-	$self->push_stack($self->read_register('A'));
+			# Push program counter to the stack
+			$self->push_stack($self->read_program_counter());
 
-	# Set program counter to interrupt address
-	$self->write_program_counter($self->read_interrupt_address());
+			# Push register A to the stack
+			$self->push_stack($self->read_register('A'));
 
-	# Set register A to the interrupt message
-	$self->write_register('A', $message);
+			# Set program counter to interrupt address
+			$self->write_program_counter($IA);
+
+			# Set register A to the interrupt message
+			$self->write_register('A', $message);
+		}
+	}
 }
 
 sub push_stack {
@@ -364,7 +375,7 @@ sub wrap {
 	
 	#print "wrap($value)\n" if $debug;
 	
-	if ($value > $self->{word_size}) {
+	if ($value >= $self->{word_size}) {
 		#print "Overflowing value: $value\n" if $debug;
 		$value =  $self->wrap($value - $self->{word_size});
 	}

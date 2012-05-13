@@ -13,6 +13,7 @@ sub new {
 	my $self = {
 		dcpu => $dcpu,
 		buffer => [],
+		interrupts_enabled => 0,
 	};
 
 	bless($self);
@@ -36,6 +37,18 @@ sub trigger_interrupt {
 		else {
 			$self->{dcpu}->write_register('C', 0);
 		}
+	}
+	elsif ($message == 2) {
+		my $b = $self->{dcpu}->read_register('A');
+
+		$self->{dcpu}->write_register('C', 0);
+		die "Keyboard does not support interrupt 2\n";
+	}
+	elsif ($message == 3) {
+		my $self->{interrupt_message} = $self->{dcpu}->read_register('B');
+	}
+	else {
+		die "Error: unrecognized keyboard interrupt message: $message\n";
 	}
 }
 

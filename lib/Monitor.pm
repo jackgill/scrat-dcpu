@@ -59,6 +59,9 @@ sub trigger_interrupt {
 			$self->draw_character($i - $start, $self->{dcpu}->read_memory($i));
 		}
 	}
+	else {
+		die "Error: unrecognized monitor interrupt message: $message\n";
+	}
 }
 
 sub draw_character {

@@ -96,7 +96,13 @@ should replace the label with the memory address of the target
 * Scratch
 
 Next:
+- implement and test interrupt queueing
+- implement PICK
 - Flesh out hardware devices:
   - finish monitor emulator (default font, default palette, blink)
-  - implement clock emulator
+  - finish keyboard emulator (interrupt behavior)
 - Implement BIOS to simplify writing programs that use the hardware and keyboard.
+
+
+
+
